@@ -5,7 +5,7 @@ import cv2
 import torch
 from terminator import Terminator
 
-from actions import ACTIONS
+from deepq.actions import ACTIONS
 from model import ZombieFightModel
 from processing import create_observation
 from stacked_state_constructor import StackedStateConstructor
@@ -38,8 +38,8 @@ def main():
     model2.eval()
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    original_video_writer = cv2.VideoWriter("original-video.mp4", fourcc, 20, (336, 336), True)
-    agent_video_writer = cv2.VideoWriter("agent-video.mp4", fourcc, 20, (84, 84), False)
+    original_video_writer = cv2.VideoWriter("deepq/original-video.mp4", fourcc, 20, (336, 336), True)
+    agent_video_writer = cv2.VideoWriter("deepq/agent-video.mp4", fourcc, 20, (84, 84), False)
 
     @torch.no_grad()
     def pick_greedily(state):

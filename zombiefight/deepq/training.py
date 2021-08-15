@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import cv2
 from terminator import Terminator
 
-from actions import ACTIONS
-from model import ZombieFightModel
+from deepq.actions import ACTIONS
+from deepq.model import ZombieFightModel
 from processing import create_observation
 from stacked_state_constructor import StackedStateConstructor
 from moving_average_calculator import MovingAverageCalculator
@@ -29,7 +29,7 @@ for port in ports:
 class EpisodeRecorder:
     def __init__(self, episode):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        self.video_writer = cv2.VideoWriter(f"videos/episode-{episode}.mp4", fourcc, 20, (84, 84), False)
+        self.video_writer = cv2.VideoWriter(f"deepq/videos/episode-{episode}.mp4", fourcc, 20, (84, 84), False)
 
     def record_state(self, state):
         assert state.shape == (84, 84)
@@ -116,8 +116,8 @@ def train():
 
     writer = SummaryWriter()
 
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("videos", exist_ok=True)
+    os.makedirs("deepq/models", exist_ok=True)
+    os.makedirs("deepq/videos", exist_ok=True)
 
     @torch.no_grad()
     def pick_greedily(state):
@@ -274,13 +274,13 @@ def train():
                     writer.add_scalar("Evaluation/Average reward", average_reward, self.n_iter)
 
                     print("Saving weights")
-                    torch.save(model1.state_dict(), f"models/zf-model1-{self.n_iter}.pt")
-                    torch.save(model2.state_dict(), f"models/zf-model2-{self.n_iter}.pt")
+                    torch.save(model1.state_dict(), f"deepq/models/zf-model1-{self.n_iter}.pt")
+                    torch.save(model2.state_dict(), f"deepq/models/zf-model2-{self.n_iter}.pt")
 
                     if average_reward > self.best_model_reward:
                         print("Current model is better than the previous best. Saving it as best model.")
-                        torch.save(model1.state_dict(), "models/zf-model1-best.pt")
-                        torch.save(model2.state_dict(), "models/zf-model2-best.pt")
+                        torch.save(model1.state_dict(), "deepq/models/zf-model1-best.pt")
+                        torch.save(model2.state_dict(), "deepq/models/zf-model2-best.pt")
                         self.best_model_reward = average_reward
 
                     self.start_data_collection_threads()
@@ -294,8 +294,8 @@ def train():
             plt.savefig("reward_distribution.png")
 
             print("Saving final model weights")
-            torch.save(model1.state_dict(), "models/zf-model1.pt")
-            torch.save(model2.state_dict(), "models/zf-model2.pt")
+            torch.save(model1.state_dict(), "deepq/models/zf-model1.pt")
+            torch.save(model2.state_dict(), "deepq/models/zf-model2.pt")
 
         def collect_data_until_stopped(self, client):
             while not self.data_collection_stopped:

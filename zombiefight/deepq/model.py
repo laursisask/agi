@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from actions import ACTIONS
+from deepq.actions import ACTIONS
 
 
 class ZombieFightModel(torch.nn.Module):
