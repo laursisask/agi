@@ -1,7 +1,7 @@
 import random
 
 from terminator import Terminator
-from actions import ACTIONS
+from deepq.actions import ACTIONS
 
 
 def main():
