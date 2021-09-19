@@ -6,7 +6,7 @@ This is a very simple scenario that could easily be solved by a handwritten
 algorithm. The main purpose was to see if it could also be solved by a
 reinforcement learning algorithm.
 
-In this directory, you will find
+In the directory `deepq` you will find
 - the source code for training and evaluating an agent/model
 - weights for the models after 500K iterations
 - video examples of the agent playing (`original-video.mp4` and `agent-video.mp4`)
@@ -77,14 +77,45 @@ layers with the additional features (the ones in previous paragraph).
 
 ## Results
 
-I trained the model for 500K iterations. At 500K iterations, the model beat
-the zombie in 99.5% of cases.
+I trained the model for 500K iterations. At 500K iterations, the model beat the
+zombie in 99.5% of cases.
 
 # Experiment 2. Fighting Zombies with PPO
 
 The environment, data and model were very similar to the Q-learning one.
 
-One difference was that instead of having fixed actions, a choice was made in
-every dimension - the model predicted a value for all of the actions
-independently. The mouse related actions were continuous and the mean and
-standard deviation of the actions was predicted.
+In the directory `ppo` you will find
+- the source code for training and evaluating an agent/model
+- weights for the models after ~20K episodes
+- video examples of the agent playing (`original-video.mp4` and
+  `agent-video.mp4`)s
+
+## Model
+
+One difference compared to q-learning was that instead of having fixed actions,
+a choice was made in every dimension - the model predicted a value for all of
+the actions independently. The mouse related actions were continuous and the
+mean and standard deviation of the actions was predicted.
+
+## Algorithm
+
+I used the PPO version with clipped surrogate objective, not the one with KL
+divergence penalty.
+
+The PPO agent was much harder to train and required a lot of experimentation
+with hyperparameters. It also required the model to be reset to previous best
+as several times the model just forgot everything and collapsed into a
+sub-optimal policy (the catastrophic forgetting problem)
+
+The agent does not play similar to humans and the deep-q agent. Most of the
+time it just rotates looking down and when the zombie gets near, attacks it.
+Possibly it does this because it does not require any visual input to find the
+zombie - the location of the zombie relative to the player is provided as
+separate input.
+
+## Results
+
+The number of iterations trained is hard to determine because the training had
+to be restarted several times but the number of episodes is around 20K.
+
+The final model beat the zombie in 94% of episodes.
