@@ -47,14 +47,12 @@ At every time step, the player can take one of the following actions:
 
 Minecraft version 1.8 was used.
 
-## Algorithm
+## Algorithms
 
-Deep Q-learning algorithm was used to solve the environment.
-
-We also used double-learning, i.e. had two independent estimates for action
+I used double-learning, i.e. had two independent estimates for action
 values and used both of them to estimate the value of the next state.
 
-We also used target networks, i.e. during training we estimated the next
+Target networks were used as well, i.e. during training we estimated the next
 state's value with neural networks whose parameters were "lagging behind" the
 optimized neural networks.
 
@@ -66,18 +64,27 @@ optimization.
 As input, the model got the downscaled grayscale 84x84 image of the last four
 frames.  We ran Minecraft in 336x336 and downscaled the image to 84x84.
 
-Additionally, we gave the following features to the model directly (as numbers):
+Additionally, I gave the following features to the model directly (as numbers):
 - zombie's relative location to the player (in all x, y, z dimensions)
 - player's pitch (vertical rotation, how is the player looking up/down)
 - player's yaw (horizontal rotation, how is the player looking left/right)
 - player's health
 - zombie's health
 
-We used a model almost identical to the one introduced in DeepMind's Atari
+I used a model almost identical to the one introduced in DeepMind's Atari
 paper. The only difference was that we concatted the output from convolutional
 layers with the additional features (the ones in previous paragraph).
 
 ## Results
 
-We trained the model for 500K iterations. At 500K iterations, the model beat
+I trained the model for 500K iterations. At 500K iterations, the model beat
 the zombie in 99.5% of cases.
+
+# Experiment 2. Fighting Zombies with PPO
+
+The environment, data and model were very similar to the Q-learning one.
+
+One difference was that instead of having fixed actions, a choice was made in
+every dimension - the model predicted a value for all of the actions
+independently. The mouse related actions were continuous and the mean and
+standard deviation of the actions was predicted.
