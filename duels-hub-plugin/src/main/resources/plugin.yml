@@ -1,0 +1,10 @@
+name: DuelsHub
+version: 1.0.0-SNAPSHOT
+main: xyz.laur.duels.DuelsHubPlugin
+commands:
+  join:
+    description: Joins a game session
+    usage: /join <session ID> <randomization factor>
+  games:
+    description: Lists all ongoing games
+    usage: /games
