@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.PlayerInventory;
@@ -44,7 +45,7 @@ public class GameSessionTest {
 
         world = mock(World.class);
 
-        session = new GameSession(world, sessionManager, invisibilityManager, plugin, 0.3F);
+        session = new GameSession(world, sessionManager, invisibilityManager, plugin, 0F);
     }
 
     @Test
@@ -122,6 +123,41 @@ public class GameSessionTest {
         assertEquals(GameSession.State.ENDED, session.getState());
         verify(player1, times(1)).sendMessage("You lost");
         verify(player2, times(1)).sendMessage("You lost");
+    }
+
+    @Test
+    public void testExplorationReward() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        // Center is at (185, 78, -22)
+
+        // Spawns at (179, 80, -22)
+        when(player1.getLocation()).thenReturn(new Location(world, 181, 79, -21));
+
+        // Spawns at (191, 80, -22)
+        when(player2.getLocation()).thenReturn(new Location(world, 195, 78, -22));
+
+        session.tickMovementReward();
+        verify(player1, times(1)).sendMessage("Exploration reward 0.18769");
+
+        // No further rewards should be given when players do not move
+        for (int i = 0; i < 10; i++) {
+            session.tickMovementReward();
+            verify(player1, times(1)).sendMessage(startsWith("Exploration reward"));
+            verify(player2, times(0)).sendMessage(startsWith("Exploration reward"));
+        }
+
+        EntityDamageByEntityEvent damageEvent = mock(EntityDamageByEntityEvent.class);
+        when(damageEvent.getDamager()).thenReturn(player1);
+        when(damageEvent.getEntity()).thenReturn(player2);
+
+        session.onPlayerDamage(damageEvent);
+        verify(player1, times(1)).sendMessage("Exploration reward 0.50000");
+        verify(player2, times(1)).sendMessage("Exploration reward -0.50000");
     }
 
     protected Player createMockPlayer() {
