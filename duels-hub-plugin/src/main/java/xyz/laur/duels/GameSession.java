@@ -5,16 +5,18 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class GameSession implements Listener {
     public static final long MAX_DURATION = 6000; // 5 minutes
+    public static final double HIT_REWARD = 0.5;
+    public static final double DISTANCE_REWARD_MODIFIER = 0.1;
+    public static final double DISTANCE_REWARD_THRESHOLD = 0.01;
 
     public enum State {
         WAITING_FOR_PLAYERS, PLAYING, ENDED
@@ -27,7 +29,8 @@ public class GameSession implements Listener {
                 new Location[]{new Location(null, -18, 77, 33, 90, 0), new Location(null, -30, 77, 33, -90, 0)},
                 new Location[]{new Location(null, -24, 77, 39, 180, 0), new Location(null, -24, 77, 27, 0, 0)}
             },
-            73
+            73,
+            new Location(null, -24, 76, 33)
         ),
         SPACE_MINE(
             "Space Mine",
@@ -35,7 +38,8 @@ public class GameSession implements Listener {
                 new Location[]{new Location(null, 101, 98, -189, 90, 0), new Location(null, 89, 98, -189, -90, 0)},
                 new Location[]{new Location(null, 95, 98, -183, -180, 0), new Location(null, 95, 98, -195, 0, 0)}
             },
-            93
+            93,
+            new Location(null, 95, 96, -189)
         ),
         WHITE_CRYSTAL(
             "White Crystal",
@@ -43,17 +47,20 @@ public class GameSession implements Listener {
                 new Location[]{new Location(null, 179, 80, -22, -90, 0), new Location(null, 191, 80, -22, 90, 0)},
                 new Location[]{new Location(null, 185, 80, -16, 180, 0), new Location(null, 185, 80, -28, 0, 0)}
             },
-            74
+            74,
+            new Location(null, 185, 78, -22)
         );
 
         private final String displayName;
         private final Location[][] spawnLocations;
         private final double minY;
+        private final Location center;
 
-        GameMap(String displayName, Location[][] spawnLocations, double minY) {
+        GameMap(String displayName, Location[][] spawnLocations, double minY, Location center) {
             this.displayName = displayName;
             this.spawnLocations = spawnLocations;
             this.minY = minY;
+            this.center = center;
         }
 
         public String getDisplayName() {
@@ -69,6 +76,8 @@ public class GameSession implements Listener {
     private final Plugin plugin;
     private final Location[] spawnLocations;
     private final World world;
+    private final Map<Player, Location> lastLocations = new HashMap<>();
+    private int taskId;
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
@@ -135,11 +144,15 @@ public class GameSession implements Listener {
             Player player = players.get(i);
 
             player.teleport(spawnLocations[i]);
+            lastLocations.put(player, spawnLocations[i]);
 
             player.sendMessage("Game started");
             player.setHealth(player.getMaxHealth());
             player.getInventory().clear();
         }
+
+        taskId = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
+            this::tickMovementReward, 20, 20);
 
         state = State.PLAYING;
     }
@@ -151,6 +164,9 @@ public class GameSession implements Listener {
 
         PlayerQuitEvent.getHandlerList().unregister(this);
         PlayerMoveEvent.getHandlerList().unregister(this);
+        EntityDamageByEntityEvent.getHandlerList().unregister(this);
+
+        plugin.getServer().getScheduler().cancelTask(taskId);
 
         if (winner == null) {
             for (Player player : players) {
@@ -215,6 +231,49 @@ public class GameSession implements Listener {
             endGame(winner);
             plugin.getLogger().info("Game ended due to one player falling off the platform");
         }
+    }
+
+    @EventHandler
+    public void onPlayerDamage(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player) ||
+            state != State.PLAYING) {
+            return;
+        }
+
+        Player attacker = (Player) event.getDamager();
+        Player target = (Player) event.getEntity();
+
+        if (hasPlayer(attacker) && hasPlayer(target)) {
+            sendExplorationReward(attacker, HIT_REWARD);
+            sendExplorationReward(target, -HIT_REWARD);
+        }
+    }
+
+    protected void tickMovementReward() {
+        if (state != State.PLAYING) throw new IllegalStateException("Game is in unexpected state " + state);
+
+        for (Player player : players) {
+            double distanceBefore = distanceToCenter2d(lastLocations.get(player));
+            double distanceNow = distanceToCenter2d(player.getLocation());
+            double distanceReward = (distanceBefore - distanceNow) * DISTANCE_REWARD_MODIFIER;
+
+            if (distanceReward > DISTANCE_REWARD_THRESHOLD) {
+                sendExplorationReward(player, distanceReward);
+            }
+
+            lastLocations.put(player, player.getLocation());
+        }
+    }
+
+    protected void sendExplorationReward(Player player, double reward) {
+        player.sendMessage(String.format("Exploration reward %.5f", reward));
+    }
+
+    protected double distanceToCenter2d(Location location) {
+        double dx = map.center.getX() - location.getX();
+        double dz = map.center.getZ() - location.getZ();
+
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     protected Player getOtherPlayer(Player player) {
