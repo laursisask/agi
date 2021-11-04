@@ -156,8 +156,8 @@ public class GameSessionTest {
         when(damageEvent.getEntity()).thenReturn(player2);
 
         session.onPlayerDamage(damageEvent);
-        verify(player1, times(1)).sendMessage("Exploration reward 0.50000");
-        verify(player2, times(1)).sendMessage("Exploration reward -0.50000");
+        verify(player1, times(1)).sendMessage("Exploration reward 5.00000");
+        verify(player2, times(1)).sendMessage("Exploration reward -5.00000");
     }
 
     @Test
