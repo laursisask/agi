@@ -15,8 +15,6 @@ import java.util.*;
 public class GameSession implements Listener {
     public static final long MAX_DURATION = 6000; // 5 minutes
     public static final double HIT_REWARD = 5;
-    public static final double DISTANCE_REWARD_MODIFIER = 0.1;
-    public static final double DISTANCE_REWARD_THRESHOLD = 0.01;
 
     public enum State {
         WAITING_FOR_PLAYERS, PLAYING, ENDED
@@ -76,7 +74,6 @@ public class GameSession implements Listener {
     private final Plugin plugin;
     private final Location[] spawnLocations;
     private final Map<Player, Location> lastLocations = new HashMap<>();
-    private int taskId;
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
@@ -149,9 +146,6 @@ public class GameSession implements Listener {
             player.getInventory().clear();
         }
 
-        taskId = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
-            this::tickMovementReward, 20, 20);
-
         state = State.PLAYING;
     }
 
@@ -163,8 +157,6 @@ public class GameSession implements Listener {
         PlayerQuitEvent.getHandlerList().unregister(this);
         PlayerMoveEvent.getHandlerList().unregister(this);
         EntityDamageByEntityEvent.getHandlerList().unregister(this);
-
-        plugin.getServer().getScheduler().cancelTask(taskId);
 
         if (winner == null) {
             for (Player player : players) {
@@ -242,22 +234,6 @@ public class GameSession implements Listener {
             sendExplorationReward(target, -HIT_REWARD);
 
             sendMetadata(attacker, "hit", 1);
-        }
-    }
-
-    protected void tickMovementReward() {
-        if (state != State.PLAYING) throw new IllegalStateException("Game is in unexpected state " + state);
-
-        for (Player player : players) {
-            double distanceBefore = distanceToCenter2d(lastLocations.get(player));
-            double distanceNow = distanceToCenter2d(player.getLocation());
-            double distanceReward = (distanceBefore - distanceNow) * DISTANCE_REWARD_MODIFIER;
-
-            if (distanceReward > DISTANCE_REWARD_THRESHOLD) {
-                sendExplorationReward(player, distanceReward);
-            }
-
-            lastLocations.put(player, player.getLocation());
         }
     }
 
