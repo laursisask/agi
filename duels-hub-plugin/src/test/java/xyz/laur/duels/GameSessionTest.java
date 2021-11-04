@@ -133,24 +133,6 @@ public class GameSessionTest {
         Player player2 = createMockPlayer();
         session.addPlayer(player2);
 
-        // Center is at (185, 78, -22)
-
-        // Spawns at (179, 80, -22)
-        when(player1.getLocation()).thenReturn(new Location(world, 181, 79, -21));
-
-        // Spawns at (191, 80, -22)
-        when(player2.getLocation()).thenReturn(new Location(world, 195, 78, -22));
-
-        session.tickMovementReward();
-        verify(player1, times(1)).sendMessage("Exploration reward 0.18769");
-
-        // No further rewards should be given when players do not move
-        for (int i = 0; i < 10; i++) {
-            session.tickMovementReward();
-            verify(player1, times(1)).sendMessage(startsWith("Exploration reward"));
-            verify(player2, times(0)).sendMessage(startsWith("Exploration reward"));
-        }
-
         EntityDamageByEntityEvent damageEvent = mock(EntityDamageByEntityEvent.class);
         when(damageEvent.getDamager()).thenReturn(player1);
         when(damageEvent.getEntity()).thenReturn(player2);
