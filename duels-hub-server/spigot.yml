@@ -38,7 +38,7 @@ commands:
   tab-complete: 0
   log: true
   spam-exclusions:
-  - /skill
+  - /join
   silent-commandblock-console: false
   replace-commands:
   - setblock
