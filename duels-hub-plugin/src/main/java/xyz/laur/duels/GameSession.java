@@ -75,14 +75,12 @@ public class GameSession implements Listener {
     private final InvisibilityManager invisibilityManager;
     private final Plugin plugin;
     private final Location[] spawnLocations;
-    private final World world;
     private final Map<Player, Location> lastLocations = new HashMap<>();
     private int taskId;
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
                        Plugin plugin, float randomizationFactor) {
-        this.world = world;
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.plugin = plugin;
@@ -176,10 +174,6 @@ public class GameSession implements Listener {
             Player loser = getOtherPlayer(winner);
             loser.sendMessage("You lost");
             winner.sendMessage("You won");
-        }
-
-        for (Player player : players) {
-            player.teleport(world.getSpawnLocation());
         }
 
         sessionManager.removeSession(this);
