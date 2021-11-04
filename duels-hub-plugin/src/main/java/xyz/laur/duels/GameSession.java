@@ -14,7 +14,7 @@ import java.util.*;
 
 public class GameSession implements Listener {
     public static final long MAX_DURATION = 6000; // 5 minutes
-    public static final double HIT_REWARD = 0.5;
+    public static final double HIT_REWARD = 5;
     public static final double DISTANCE_REWARD_MODIFIER = 0.1;
     public static final double DISTANCE_REWARD_THRESHOLD = 0.01;
 
