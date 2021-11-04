@@ -240,6 +240,8 @@ public class GameSession implements Listener {
         if (hasPlayer(attacker) && hasPlayer(target)) {
             sendExplorationReward(attacker, HIT_REWARD);
             sendExplorationReward(target, -HIT_REWARD);
+
+            sendMetadata(attacker, "hit", 1);
         }
     }
 
@@ -261,6 +263,10 @@ public class GameSession implements Listener {
 
     protected void sendExplorationReward(Player player, double reward) {
         player.sendMessage(String.format("Exploration reward %.5f", reward));
+    }
+
+    protected void sendMetadata(Player player, String key, double value) {
+        player.sendMessage(String.format("metadata:%s:%.5f", key, value));
     }
 
     protected double distanceToCenter2d(Location location) {
