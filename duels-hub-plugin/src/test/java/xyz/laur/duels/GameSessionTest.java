@@ -126,23 +126,6 @@ public class GameSessionTest {
     }
 
     @Test
-    public void testExplorationReward() {
-        Player player1 = createMockPlayer();
-        session.addPlayer(player1);
-
-        Player player2 = createMockPlayer();
-        session.addPlayer(player2);
-
-        EntityDamageByEntityEvent damageEvent = mock(EntityDamageByEntityEvent.class);
-        when(damageEvent.getDamager()).thenReturn(player1);
-        when(damageEvent.getEntity()).thenReturn(player2);
-
-        session.onPlayerDamage(damageEvent);
-        verify(player1, times(1)).sendMessage("Exploration reward 5.00000");
-        verify(player2, times(1)).sendMessage("Exploration reward -5.00000");
-    }
-
-    @Test
     public void testMetadata() {
         Player player1 = createMockPlayer();
         session.addPlayer(player1);
@@ -157,6 +140,7 @@ public class GameSessionTest {
         session.onPlayerDamage(damageEvent);
 
         verify(player1, times(1)).sendMessage("metadata:hit:1.00000");
+        verify(player2, times(1)).sendMessage("metadata:hit:-1.00000");
     }
 
     protected Player createMockPlayer() {
