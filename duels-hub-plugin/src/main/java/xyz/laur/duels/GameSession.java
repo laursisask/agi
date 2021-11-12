@@ -14,7 +14,6 @@ import java.util.*;
 
 public class GameSession implements Listener {
     public static final long MAX_DURATION = 6000; // 5 minutes
-    public static final double HIT_REWARD = 5;
 
     public enum State {
         WAITING_FOR_PLAYERS, PLAYING, ENDED
@@ -230,15 +229,9 @@ public class GameSession implements Listener {
         Player target = (Player) event.getEntity();
 
         if (hasPlayer(attacker) && hasPlayer(target)) {
-            sendExplorationReward(attacker, HIT_REWARD);
-            sendExplorationReward(target, -HIT_REWARD);
-
             sendMetadata(attacker, "hit", 1);
+            sendMetadata(target, "hit", -1);
         }
-    }
-
-    protected void sendExplorationReward(Player player, double reward) {
-        player.sendMessage(String.format("Exploration reward %.5f", reward));
     }
 
     protected void sendMetadata(Player player, String key, double value) {
