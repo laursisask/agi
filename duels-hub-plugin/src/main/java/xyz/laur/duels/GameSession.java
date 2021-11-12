@@ -22,31 +22,31 @@ public class GameSession implements Listener {
 
     public enum GameMap {
         CLASSIC_SUMO(
-            "Classic Sumo",
-            new Location[][]{
-                new Location[]{new Location(null, -18, 77, 33, 90, 0), new Location(null, -30, 77, 33, -90, 0)},
-                new Location[]{new Location(null, -24, 77, 39, 180, 0), new Location(null, -24, 77, 27, 0, 0)}
-            },
-            73,
-            new Location(null, -24, 76, 33)
+                "Classic Sumo",
+                new Location[][]{
+                        new Location[]{new Location(null, -18, 77, 33, 90, 0), new Location(null, -30, 77, 33, -90, 0)},
+                        new Location[]{new Location(null, -24, 77, 39, 180, 0), new Location(null, -24, 77, 27, 0, 0)}
+                },
+                73,
+                new Location(null, -24, 76, 33)
         ),
         SPACE_MINE(
-            "Space Mine",
-            new Location[][]{
-                new Location[]{new Location(null, 101, 98, -189, 90, 0), new Location(null, 89, 98, -189, -90, 0)},
-                new Location[]{new Location(null, 95, 98, -183, -180, 0), new Location(null, 95, 98, -195, 0, 0)}
-            },
-            93,
-            new Location(null, 95, 96, -189)
+                "Space Mine",
+                new Location[][]{
+                        new Location[]{new Location(null, 101, 98, -189, 90, 0), new Location(null, 89, 98, -189, -90, 0)},
+                        new Location[]{new Location(null, 95, 98, -183, -180, 0), new Location(null, 95, 98, -195, 0, 0)}
+                },
+                93,
+                new Location(null, 95, 96, -189)
         ),
         WHITE_CRYSTAL(
-            "White Crystal",
-            new Location[][]{
-                new Location[]{new Location(null, 179, 80, -22, -90, 0), new Location(null, 191, 80, -22, 90, 0)},
-                new Location[]{new Location(null, 185, 80, -16, 180, 0), new Location(null, 185, 80, -28, 0, 0)}
-            },
-            74,
-            new Location(null, 185, 78, -22)
+                "White Crystal",
+                new Location[][]{
+                        new Location[]{new Location(null, 179, 80, -22, -90, 0), new Location(null, 191, 80, -22, 90, 0)},
+                        new Location[]{new Location(null, 185, 80, -16, 180, 0), new Location(null, 185, 80, -28, 0, 0)}
+                },
+                74,
+                new Location(null, 185, 78, -22)
         );
 
         private final String displayName;
@@ -222,7 +222,7 @@ public class GameSession implements Listener {
     @EventHandler
     public void onPlayerDamage(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player) ||
-            state != State.PLAYING) {
+                state != State.PLAYING) {
             return;
         }
 
