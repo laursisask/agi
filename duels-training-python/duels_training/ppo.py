@@ -1,37 +1,18 @@
 import copy
 import logging
 import math
+import os
 import statistics
-import sys
 import threading
 import time
 from dataclasses import dataclass
-from multiprocessing import Pool
 from threading import Thread
 from typing import List
 
 import torch
+import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import torch.distributed as dist
-from torch.distributed import ReduceOp
-
-
-def configure_logger():
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-
-    root.handlers.clear()
-    handler = logging.StreamHandler(stream=sys.stdout)
-
-    formatter = logging.Formatter(
-        fmt=f"[{dist.get_rank()}] %(asctime)s [%(levelname)s]: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    handler.setFormatter(formatter)
-
-    root.addHandler(handler)
 
 
 @dataclass
@@ -39,12 +20,13 @@ class Trajectory:
     observations: List
     actions: List
     rewards: List
+    metadatas: List
 
     def __len__(self):
         return len(self.observations)
 
     def __post_init__(self):
-        assert len(self.observations) == len(self.actions) == len(self.rewards)
+        assert len(self.observations) == len(self.actions) == len(self.rewards) == len(self.metadatas)
 
 
 class DataCollector:
@@ -64,16 +46,18 @@ class DataCollector:
         observations = []
         actions = []
         rewards = []
+        metadatas = []
 
         while not done:
             action = policy_state.sample_action()
 
-            next_observation, reward, done, _ = self.env.step(action)
+            next_observation, reward, done, metadata = self.env.step(action)
             cumulative_reward += reward
 
             observations.append(observation)
             actions.append(action)
             rewards.append(reward)
+            metadatas.append(metadata)
 
             policy_state.update(next_observation)
             observation = next_observation
@@ -83,11 +67,11 @@ class DataCollector:
         end_time = time.time()
         seconds_elapsed = end_time - start_time
 
-        logging.info(f"Episode ended with cumulative reward of {cumulative_reward}, "
+        logging.info(f"Episode ended with cumulative reward of {cumulative_reward:.2f}, "
                      f"took {seconds_elapsed:.2f} seconds, "
                      f"TPS was {steps_done / seconds_elapsed:.2f}")
 
-        return Trajectory(observations=observations, actions=actions, rewards=rewards)
+        return Trajectory(observations=observations, actions=actions, rewards=rewards, metadatas=metadatas)
 
 
 def compute_value_estimates(device, critic, observations, steps_per_call) -> torch.Tensor:
@@ -191,22 +175,6 @@ def standardize(x, mask):
     return (x - mean) / std
 
 
-def is_primary():
-    return dist.get_rank() == 0
-
-
-def average_grads(model):
-    size = float(dist.get_world_size())
-    for param in model.parameters():
-        dist.reduce(param.data, 0, op=ReduceOp.SUM)
-        param.data /= size
-
-
-def sync_params(model):
-    for param in model.parameters():
-        dist.broadcast(param.data, 0)
-
-
 def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropagation_steps,
                    clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
     model.zero_grad()
@@ -232,19 +200,31 @@ def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropa
             all_advantages.split(backpropagation_steps, dim=1),
             all_mask.split(backpropagation_steps, dim=1)
     ):
+        observations = observations.to(device)
+        actions = actions.to(device)
+        returns = returns.to(device)
+        advantages = advantages.to(device)
+        mask = mask.to(device)
+
         policy_dists, value_estimates, last_state = model(observations, initial_state=last_state)
 
-        log_probs = policy.action_log_prob(policy_dists, actions)
+        log_probs = policy.action_log_prob(
+            policy_dists.flatten(start_dim=0, end_dim=1),
+            actions.flatten(start_dim=0, end_dim=1)
+        ).reshape([actions.size(0), actions.size(1)])
         assert log_probs.shape == advantages.shape
 
         with torch.no_grad():
-            policy_dists_old, last_state_old = model_old(
+            policy_dists_old, _, last_state_old = model_old(
                 observations,
                 initial_state=last_state_old,
                 compute_value_estimates=False
             )
 
-        log_probs_old = policy.action_log_prob(policy_dists_old, actions)
+        log_probs_old = policy.action_log_prob(
+            policy_dists_old.flatten(start_dim=0, end_dim=1),
+            actions.flatten(start_dim=0, end_dim=1)
+        ).reshape([actions.size(0), actions.size(1)])
         assert log_probs_old.shape == advantages.shape
 
         ratios = torch.exp(log_probs - log_probs_old)
@@ -264,7 +244,9 @@ def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropa
         assert not critic_loss.isnan()
         assert critic_loss.numel() == 1
 
-        entropies = policy.entropy(policy_dists)
+        entropies = policy.entropy(
+            policy_dists.flatten(start_dim=0, end_dim=1)
+        ).reshape([policy_dists.size(0), policy_dists.size(1)])
         assert entropies.shape == mask.shape
 
         entropy = torch.sum(entropies * mask) / num_of_samples
@@ -280,48 +262,30 @@ def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropa
         entropy_loss_sum += entropy_loss.item()
         loss_sum += loss.item()
 
+        assert loss < 1e6
+
         last_state.detach_()
 
-    average_grads(model)
+    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+    optimizer.step()
 
-    if is_primary():
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-        optimizer.step()
+    avg_loss = torch.tensor([loss_sum / backward_steps], dtype=torch.float32, device=device).item()
+    avg_actor_loss = torch.tensor([actor_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
+    avg_critic_loss = torch.tensor([critic_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
+    avg_entropy_loss = torch.tensor([entropy_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
 
-    sync_params(model)
-
-    worker_loss = torch.tensor([loss_sum / backward_steps], dtype=torch.float32, device=device)
-    dist.reduce(worker_loss, 0, op=ReduceOp.SUM)
-    avg_loss = worker_loss.item() / dist.get_world_size()
-
-    worker_actor_loss = torch.tensor([actor_loss_sum / backward_steps], dtype=torch.float32, device=device)
-    dist.reduce(worker_actor_loss, 0, op=ReduceOp.SUM)
-    avg_actor_loss = worker_actor_loss.item() / dist.get_world_size()
-
-    worker_critic_loss = torch.tensor([critic_loss_sum / backward_steps], dtype=torch.float32, device=device)
-    dist.reduce(worker_critic_loss, 0, op=ReduceOp.SUM)
-    avg_critic_loss = worker_critic_loss.item() / dist.get_world_size()
-
-    worker_entropy_loss = torch.tensor([entropy_loss_sum / backward_steps], dtype=torch.float32, device=device)
-    dist.reduce(worker_entropy_loss, 0, op=ReduceOp.SUM)
-    avg_entropy_loss = worker_entropy_loss.item() / dist.get_world_size()
-
-    if is_primary():
-        return (
-            avg_loss,
-            avg_actor_loss,
-            avg_critic_loss,
-            avg_entropy_loss,
-            grad_norm.item()
-        )
-    else:
-        return 0, 0, 0, 0, 0
+    return (
+        avg_loss,
+        avg_actor_loss,
+        avg_critic_loss,
+        avg_entropy_loss,
+        grad_norm.item()
+    )
 
 
 def train(device, dataset, model, policy, optimizer, metrics, start_iteration, num_epochs, batch_size,
           backpropagation_steps, clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
-    if is_primary():
-        logging.info(f"Training on {len(dataset)} trajectories")
+    logging.info(f"Training on {len(dataset)} trajectories")
 
     model_old = copy.deepcopy(model)
 
@@ -342,12 +306,6 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         returns = pad_sequence(returns, batch_first=True)
         advantages = pad_sequence(advantages, batch_first=True)
 
-        observations = observations.to(device)
-        actions = actions.to(device)
-        returns = returns.to(device)
-        advantages = advantages.to(device)
-        mask = mask.to(device)
-
         assert observations.size(0) == actions.size(0) == returns.size(0) == advantages.size(0) == mask.size(0)
         assert observations.size(1) == actions.size(1) == returns.size(1) == advantages.size(1) == mask.size(1)
 
@@ -358,8 +316,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
     iteration = start_iteration
 
     for i in range(1, num_epochs + 1):
-        if is_primary():
-            logging.info(f"Starting epoch {i}")
+        logging.info(f"Starting epoch {i}")
 
         loss_sum = 0
         actor_loss_sum = 0
@@ -385,47 +342,66 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
 
             num_of_batches += 1
 
-            if is_primary():
-                loss_sum += loss
-                actor_loss_sum += actor_loss
-                critic_loss_sum += critic_loss
-                entropy_loss_sum += entropy_loss
-                metrics.add_scalar("Loss/Total", loss_sum / num_of_batches, iteration)
-                metrics.add_scalar("Loss/Actor", actor_loss_sum / num_of_batches, iteration)
-                metrics.add_scalar("Loss/Critic", critic_loss_sum / num_of_batches, iteration)
-                metrics.add_scalar("Loss/Entropy", entropy_loss_sum / num_of_batches, iteration)
-                metrics.add_scalar("Unclipped gradient norm", grad_norm, iteration)
+            loss_sum += loss
+            actor_loss_sum += actor_loss
+            critic_loss_sum += critic_loss
+            entropy_loss_sum += entropy_loss
+            metrics.add_scalar("Loss/Total", loss_sum / num_of_batches, iteration)
+            metrics.add_scalar("Loss/Actor", actor_loss_sum / num_of_batches, iteration)
+            metrics.add_scalar("Loss/Critic", critic_loss_sum / num_of_batches, iteration)
+            metrics.add_scalar("Loss/Entropy", entropy_loss_sum / num_of_batches, iteration)
+            metrics.add_scalar("Unclipped gradient norm", grad_norm, iteration)
 
             iteration += 1
 
-        if is_primary():
-            logging.info(f"Epoch total loss: {loss_sum / num_of_batches:.3f}, "
-                         f"actor loss: {actor_loss_sum / num_of_batches:.3f}, "
-                         f"critic loss: {critic_loss_sum / num_of_batches:.3f}, "
-                         f"entropy loss: {entropy_loss_sum / num_of_batches:.3f}")
+        logging.info(f"Epoch total loss: {loss_sum / num_of_batches:.3f}, "
+                     f"actor loss: {actor_loss_sum / num_of_batches:.3f}, "
+                     f"critic loss: {critic_loss_sum / num_of_batches:.3f}, "
+                     f"entropy loss: {entropy_loss_sum / num_of_batches:.3f}")
 
     return iteration
 
 
 def compute_average_reward(trajectories):
     episode_rewards = [sum(trajectory.rewards) for trajectory in trajectories]
-
     return statistics.mean(episode_rewards)
 
 
-def run_episodes_parallel(policy, envs, num_episodes):
-    assert num_episodes % len(envs) == 0
+def compute_average_length(trajectories):
+    episode_lengths = [len(trajectory.actions) for trajectory in trajectories]
+    return statistics.mean(episode_lengths)
 
+
+def compute_average_hits(trajectories):
+    hits = 0
+
+    for trajectory in trajectories:
+        for metadata in trajectory.metadatas:
+            if "hit" in metadata:
+                hits += metadata["hit"]
+
+    return hits / len(trajectories)
+
+
+def run_episodes_parallel(policy, envs, num_steps, min_episodes):
     trajectories = []
+    steps_done = 0
     lock = threading.Lock()
 
     def run_episodes(env):
+        nonlocal steps_done
+
         data_collector = DataCollector(policy, env)
 
-        for _ in range(num_episodes // len(envs)):
+        while True:
+            with lock:
+                if steps_done > num_steps and len(trajectories) > min_episodes:
+                    break
+
             trajectory = data_collector.run_episode()
 
             with lock:
+                steps_done += len(trajectory)
                 trajectories.append(trajectory)
 
     threads = []
@@ -436,9 +412,55 @@ def run_episodes_parallel(policy, envs, num_episodes):
 
     [thread.join() for thread in threads]
 
-    assert len(trajectories) == num_episodes
+    assert steps_done >= num_steps
 
     return trajectories
+
+
+def collect_data_and_train_iteration(device, policy, envs, model, optimizer, metrics, steps_per_iteration,
+                                     train_it, global_it, critic, bootstrap_length, num_epochs, batch_size,
+                                     backpropagation_steps, clip_range, max_grad_norm, value_coefficient,
+                                     entropy_coefficient, assets_dir):
+    trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, batch_size)
+    avg_reward = compute_average_reward(trajectories)
+    avg_length = compute_average_length(trajectories)
+    avg_hits = compute_average_hits(trajectories)
+
+    logging.info(f"Average reward was {avg_reward:.3f}")
+    metrics.add_scalar("Average reward", avg_reward, global_it)
+
+    logging.info(f"Average episode length was {avg_length:.1f} steps")
+    metrics.add_scalar("Average length", avg_length, global_it)
+
+    logging.info(f"Average number of hits per episode was {avg_hits:.2f}")
+    metrics.add_scalar("Average number of hits", avg_hits, global_it)
+
+    logging.info("Data collection phase finished")
+
+    dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length)
+    del trajectories
+
+    train_it = train(
+        device=device,
+        dataset=dataset,
+        model=model,
+        policy=policy,
+        optimizer=optimizer,
+        metrics=metrics,
+        start_iteration=train_it,
+        num_epochs=num_epochs,
+        batch_size=batch_size,
+        backpropagation_steps=backpropagation_steps,
+        clip_range=clip_range,
+        max_grad_norm=max_grad_norm,
+        value_coefficient=value_coefficient,
+        entropy_coefficient=entropy_coefficient
+    )
+
+    torch.save(model.state_dict(), os.path.join(assets_dir, "last_model.pt"))
+    torch.save(optimizer.state_dict(), os.path.join(assets_dir, "last_optimizer.pt"))
+
+    return train_it
 
 
 def collect_data_and_train(
@@ -449,7 +471,7 @@ def collect_data_and_train(
         optimizer,
         metrics,
         iterations=1000,
-        episodes_per_iteration=128,
+        steps_per_iteration=4096,
         bootstrap_length=5,
         num_epochs=3,
         batch_size=128,
@@ -458,78 +480,49 @@ def collect_data_and_train(
         max_grad_norm=5.0,
         value_coefficient=1.0,
         entropy_coefficient=0.01,
-        evaluation_episodes=250
+        post_iteration_callback=None,
+        start_global_iteration=1,
+        start_train_iteration=0,
+        assets_dir="."
 ):
-    assert episodes_per_iteration % len(envs) == 0
-    assert evaluation_episodes % len(envs) == 0
-
     def critic(*args, **kwargs):
-        return model(*args, **{**kwargs, **{"compute_policy_dists": False}})
+        _, values, final_state = model(*args, **{**kwargs, **{"compute_policy_dists": False}})
+        return values, final_state
 
-    train_it = 0
-    best_reward = -1e9
+    train_it = start_train_iteration
 
-    for i in range(1, iterations + 1):
-        if is_primary():
-            logging.info(f"Starting iteration {i}")
+    for i in range(start_global_iteration, iterations + 1):
+        logging.info(f"Starting iteration {i}")
         start_time = time.time()
 
-        trajectories = run_episodes_parallel(policy, envs, episodes_per_iteration)
-        worker_avg_reward = compute_average_reward(trajectories)
-        avg_reward_sums = torch.tensor([worker_avg_reward], dtype=torch.float32, device=device)
-        dist.reduce(avg_reward_sums, 0, op=ReduceOp.SUM)
-
-        if is_primary():
-            avg_reward = avg_reward_sums.item() / dist.get_world_size()
-            logging.info(f"Average reward was {avg_reward:.3f}")
-            metrics.add_scalar("Average reward", avg_reward, i)
-
-            if avg_reward > best_reward:
-                logging.info("Current average reward was higher than previous best, saving model")
-                torch.save(model.state_dict(), "best_model.pt")
-                best_reward = avg_reward
-
-        logging.info("Data collection phase finished")
-
-        dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length)
-
-        train_it = train(
+        train_it = collect_data_and_train_iteration(
             device=device,
-            dataset=dataset,
-            model=model,
             policy=policy,
+            envs=envs,
+            model=model,
             optimizer=optimizer,
             metrics=metrics,
-            start_iteration=train_it,
+            steps_per_iteration=steps_per_iteration,
+            train_it=train_it,
+            global_it=i,
+            critic=critic,
+            bootstrap_length=bootstrap_length,
             num_epochs=num_epochs,
             batch_size=batch_size,
             backpropagation_steps=backpropagation_steps,
             clip_range=clip_range,
             max_grad_norm=max_grad_norm,
             value_coefficient=value_coefficient,
-            entropy_coefficient=entropy_coefficient
+            entropy_coefficient=entropy_coefficient,
+            assets_dir=assets_dir
         )
-
-        if is_primary():
-            torch.save(model.state_dict(), "last_model.pt")
-            torch.save(optimizer.state_dict(), "last_optimizer.pt")
 
         end_time = time.time()
         seconds_elapsed = end_time - start_time
-        if is_primary():
-            logging.info(f"Iteration {i} finished, took total of {seconds_elapsed / 60:.1f} minutes")
+        logging.info(f"Iteration {i} finished, took total of {seconds_elapsed / 60:.1f} minutes")
 
-    if is_primary():
-        logging.info("Training finished")
-        logging.info("Evaluating best model")
+        if post_iteration_callback is not None:
+            post_iteration_callback(i, train_it)
 
-    evaluation_trajectories = run_episodes_parallel(policy, envs, evaluation_episodes)
-    worker_eval_reward = compute_average_reward(evaluation_trajectories)
-    eval_reward_sums = torch.tensor([worker_eval_reward], dtype=torch.float32)
-    dist.reduce(eval_reward_sums, 0, op=ReduceOp.SUM)
-
-    if is_primary():
-        avg_eval_reward = eval_reward_sums.item() / dist.get_world_size()
-        logging.info(f"Best model had average reward of {avg_eval_reward:.3f} per episode")
-
-        return avg_eval_reward
+    logging.info("Training finished")
+    logging.info("Evaluating best model")

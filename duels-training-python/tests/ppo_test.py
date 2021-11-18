@@ -1,23 +1,13 @@
 import random
+import statistics
 
 import pytest
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
 from torch.utils.tensorboard import SummaryWriter
 
-from dppo.dppo import DataCollector, Trajectory, create_dataset, train_on_batch, collect_data_and_train
+from duels_training.ppo import DataCollector, Trajectory, create_dataset, train_on_batch, collect_data_and_train
 from tests.gridworld import Gridworld, GridworldPolicy, GridworldModel
 from tests.models import RecurrentModel, PolicyForRecurrentModel
-
-
-def set_up_process_group(tmp_path):
-    dist.init_process_group(
-        backend="gloo",
-        init_method=f"file://{tmp_path}/sharedfile",
-        rank=0,
-        world_size=1
-    )
 
 
 def test_run_episode_random_policy():
@@ -112,7 +102,8 @@ def test_create_dataset_single_trajectory():
         Trajectory(
             observations=observations_list,
             rewards=[3, 2, -5, 1, 0, 9],
-            actions=actions_list
+            actions=actions_list,
+            metadatas=[{}] * 6
         )
     ]
 
@@ -207,9 +198,7 @@ def test_create_dataset_gridworld():
             assert advantages[i] == -2
 
 
-def test_train_on_batch(tmp_path):
-    set_up_process_group(tmp_path)
-
+def test_train_on_batch():
     model = RecurrentModel()
     policy = PolicyForRecurrentModel()
     optimizer = torch.optim.Adam(model.parameters())
@@ -250,12 +239,8 @@ def test_train_on_batch(tmp_path):
     assert entropy_loss == pytest.approx(-1.4, abs=0.1)
     assert grad_norm == pytest.approx(0.4, abs=0.1)
 
-    dist.destroy_process_group()
 
-
-def test_train_on_batch_critic_loss_zero(tmp_path):
-    set_up_process_group(tmp_path)
-
+def test_train_on_batch_critic_loss_zero():
     model = RecurrentModel()
     policy = PolicyForRecurrentModel()
     optimizer = torch.optim.Adam(model.parameters())
@@ -295,50 +280,54 @@ def test_train_on_batch_critic_loss_zero(tmp_path):
     assert critic_loss == pytest.approx(0, abs=1e-10)
     assert loss == pytest.approx(actor_loss + 0.01 * entropy_loss, abs=1e-6)
 
-    dist.destroy_process_group()
 
+def test_collect_data_and_train(tmp_path):
+    torch.manual_seed(0)
+    random.seed(0)
 
-def launch_worker(rank, world_size, tmp_path):
-    dist.init_process_group(
-        backend="gloo",
-        init_method=f"file://{tmp_path}/sharedfile",
-        rank=rank,
-        world_size=world_size
-    )
-
-    torch.manual_seed(rank)
-    random.seed(rank)
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = GridworldModel()
+    model.to(device)
     optimizer = torch.optim.Adam(model.parameters())
-    device = torch.device("cpu")
-    policy = GridworldPolicy(model)
-    envs = [Gridworld() for _ in range(4)]
 
-    eval_reward = collect_data_and_train(
+    policy = GridworldPolicy(model)
+    envs = [Gridworld(device=device) for _ in range(4)]
+
+    collect_data_and_train(
         device=device,
         model=model,
         policy=policy,
         envs=envs,
-        optimizer=optimizer if rank == 0 else None,
-        metrics=SummaryWriter(log_dir=tmp_path) if rank == 0 else None,
-        iterations=50,
-        episodes_per_iteration=64,
+        optimizer=optimizer,
+        metrics=SummaryWriter(log_dir=tmp_path),
+        iterations=14,
+        steps_per_iteration=4096,
         batch_size=8,
         value_coefficient=0.005,
         entropy_coefficient=0.01,
         clip_range=0.2,
         bootstrap_length=4,
         num_epochs=3,
-        evaluation_episodes=256
+        assets_dir=tmp_path
     )
 
-    if rank == 0:
-        assert eval_reward == pytest.approx(2.5, abs=0.3)
+    env = Gridworld(device=device)
+    rewards = []
 
+    for i in range(256):
+        done = False
+        observation = env.reset()
+        policy_state = policy.get_initial_state(observation)
+        episode_reward = 0
 
-def test_collect_data_and_train(tmp_path):
-    nprocs = 3
-    mp.spawn(launch_worker, args=(nprocs, tmp_path), nprocs=nprocs)
+        while not done:
+            action = policy_state.sample_action()
+            observation, reward, done, _ = env.step(action)
 
-# TODO: Test some other gridworld where game state is not Markov
+            episode_reward += reward
+            policy_state.update(observation)
+
+        rewards.append(episode_reward)
+
+    eval_reward = statistics.mean(rewards)
+    assert eval_reward == pytest.approx(2.8, abs=0.2)
