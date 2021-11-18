@@ -11,11 +11,14 @@ class Gridworld:
 
     ACTIONS = [LEFT, RIGHT, UP, DOWN]
 
-    def __init__(self, size=5):
+    def __init__(self, size=5, max_steps=10000, device=torch.device("cpu")):
         self.x = 0.0
         self.y = 0.0
         self.size = size
+        self.max_steps = max_steps
+        self.device = device
         self.episode_running = False
+        self.steps_taken = 0
 
     def step(self, action):
         assert self.episode_running
@@ -35,16 +38,20 @@ class Gridworld:
         else:
             raise ValueError("Invalid action")
 
+        self.steps_taken += 1
+
         self.x = max(min(self.size - 1.0, self.x + dx), 0.0)
         self.y = max(min(self.size - 1.0, self.y + dy), 0.0)
 
-        done = self.x == self.size - 1 and self.y == self.size - 1
+        reached_goal = self.x == self.size - 1 and self.y == self.size - 1
+        done = reached_goal or self.steps_taken > self.max_steps
+
         if done:
             self.episode_running = False
 
         observation = self._get_state()
-        reward = 10 if done else -1
-        debug = None
+        reward = 10 if reached_goal else -1
+        debug = {}
 
         return observation, reward, done, debug
 
@@ -52,11 +59,12 @@ class Gridworld:
         self.x = 0.0
         self.y = 0.0
         self.episode_running = True
+        self.steps_taken = 0
 
         return self._get_state()
 
     def _get_state(self):
-        return torch.tensor([self.x, self.y], dtype=torch.float32)
+        return torch.tensor([self.x, self.y], dtype=torch.float32, device=self.device)
 
 
 class PolicyState:
@@ -68,7 +76,7 @@ class PolicyState:
         self.update(observation)
 
     def update(self, observation):
-        policy_dists, self.last_state = self.model(
+        policy_dists, _, self.last_state = self.model(
             observation.unsqueeze(0).unsqueeze(0),
             initial_state=self.last_state,
             compute_value_estimates=False

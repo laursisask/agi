@@ -11,27 +11,26 @@ class RecurrentModel(torch.nn.Module):
         self.value_head = torch.nn.Linear(12, 1)
 
     def forward(self, x, initial_state=None, compute_value_estimates=True, compute_policy_dists=True):
+        if not compute_policy_dists and not compute_value_estimates:
+            raise ValueError("Should compute at least one of value and policy distributions")
+
         if initial_state is not None:
             initial_state = (initial_state[0], initial_state[1])
 
         x, final_state = self.rnn(x, initial_state)
 
+        policy_dists = None
+        value = None
+
         if compute_policy_dists:
             policy_dists = F.log_softmax(self.policy_head(x), dim=-1)
 
         if compute_value_estimates:
-            value_estimates = self.value_head(x).squeeze(-1)
+            value = self.value_head(x).squeeze(-1)
 
         final_state = torch.stack(final_state)
 
-        if compute_value_estimates and compute_policy_dists:
-            return policy_dists, value_estimates, final_state
-        elif compute_policy_dists:
-            return policy_dists, final_state
-        elif compute_value_estimates:
-            return value_estimates, final_state
-        else:
-            raise ValueError("Should compute at least one of value and policy distributions")
+        return policy_dists, value, final_state
 
 
 class PolicyForRecurrentModel:
