@@ -67,7 +67,6 @@ public class GameSession implements Listener {
     private final InvisibilityManager invisibilityManager;
     private final Plugin plugin;
     private final Location[] spawnLocations;
-    private final Map<Player, Location> lastLocations = new HashMap<>();
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
@@ -133,7 +132,6 @@ public class GameSession implements Listener {
             Player player = players.get(i);
 
             player.teleport(spawnLocations[i]);
-            lastLocations.put(player, spawnLocations[i]);
 
             player.sendMessage("Game started");
             player.setHealth(player.getMaxHealth());
