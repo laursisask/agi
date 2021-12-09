@@ -23,24 +23,24 @@ public class GameSession implements Listener {
         CLASSIC_SUMO(
                 "Classic Sumo",
                 new Location[][]{
-                        new Location[]{new Location(null, -18, 77, 33, 90, 0), new Location(null, -30, 77, 33, -90, 0)},
-                        new Location[]{new Location(null, -24, 77, 39, 180, 0), new Location(null, -24, 77, 27, 0, 0)}
+                        new Location[]{new Location(null, -17.5, 77, 33.5, 90, 0), new Location(null, -29.5, 77, 33.5, -90, 0)},
+                        new Location[]{new Location(null, -23.5, 77, 39.5, 180, 0), new Location(null, -23.5, 77, 27.5, 0, 0)}
                 },
                 73
         ),
         SPACE_MINE(
                 "Space Mine",
                 new Location[][]{
-                        new Location[]{new Location(null, 101, 98, -189, 90, 0), new Location(null, 89, 98, -189, -90, 0)},
-                        new Location[]{new Location(null, 95, 98, -183, -180, 0), new Location(null, 95, 98, -195, 0, 0)}
+                        new Location[]{new Location(null, 101.5, 98, -188.5, 90, 0), new Location(null, 89.5, 98, -188.5, -90, 0)},
+                        new Location[]{new Location(null, 95.5, 98, -182.5, -180, 0), new Location(null, 95.5, 98, -194.5, 0, 0)}
                 },
                 93
         ),
         WHITE_CRYSTAL(
                 "White Crystal",
                 new Location[][]{
-                        new Location[]{new Location(null, 179, 80, -22, -90, 0), new Location(null, 191, 80, -22, 90, 0)},
-                        new Location[]{new Location(null, 185, 80, -16, 180, 0), new Location(null, 185, 80, -28, 0, 0)}
+                        new Location[]{new Location(null, 179.5, 80, -21.5, -90, 0), new Location(null, 191.5, 80, -21.5, 90, 0)},
+                        new Location[]{new Location(null, 185.5, 80, -15.5, 180, 0), new Location(null, 185.5, 80, -27.5, 0, 0)}
                 },
                 74
         );
