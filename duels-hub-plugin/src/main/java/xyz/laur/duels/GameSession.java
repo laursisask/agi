@@ -43,6 +43,22 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 185.5, 80, -15.5, 180, 0), new Location(null, 185.5, 80, -27.5, 0, 0)}
                 },
                 74
+        ),
+        PONSEN(
+                "Ponsen",
+                new Location[][]{
+                        new Location[]{new Location(null, 59.5, 67, -30.5, -90, 0), new Location(null, 71.5, 67, -30.5, 90, 0)},
+                        new Location[]{new Location(null, 65.5, 67, -24.5, 180, 0), new Location(null, 65.5, 67, -36.5, 0, 0)}
+                },
+                60
+        ),
+        FORT_ROYALE(
+                "Fort Royale",
+                new Location[][]{
+                        new Location[]{new Location(null, -45.5, 78, -74.5, -90, 0), new Location(null, -33.5, 78, -74.5, 90, 0)},
+                        new Location[]{new Location(null, -39.5, 78, -68.5, 180, 0), new Location(null, -39.5, 78, -80.5, 0, 0)}
+                },
+                71
         );
 
         private final String displayName;
