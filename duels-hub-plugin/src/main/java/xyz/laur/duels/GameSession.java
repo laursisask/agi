@@ -26,8 +26,7 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, -18, 77, 33, 90, 0), new Location(null, -30, 77, 33, -90, 0)},
                         new Location[]{new Location(null, -24, 77, 39, 180, 0), new Location(null, -24, 77, 27, 0, 0)}
                 },
-                73,
-                new Location(null, -24, 76, 33)
+                73
         ),
         SPACE_MINE(
                 "Space Mine",
@@ -35,8 +34,7 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 101, 98, -189, 90, 0), new Location(null, 89, 98, -189, -90, 0)},
                         new Location[]{new Location(null, 95, 98, -183, -180, 0), new Location(null, 95, 98, -195, 0, 0)}
                 },
-                93,
-                new Location(null, 95, 96, -189)
+                93
         ),
         WHITE_CRYSTAL(
                 "White Crystal",
@@ -44,20 +42,17 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 179, 80, -22, -90, 0), new Location(null, 191, 80, -22, 90, 0)},
                         new Location[]{new Location(null, 185, 80, -16, 180, 0), new Location(null, 185, 80, -28, 0, 0)}
                 },
-                74,
-                new Location(null, 185, 78, -22)
+                74
         );
 
         private final String displayName;
         private final Location[][] spawnLocations;
         private final double minY;
-        private final Location center;
 
-        GameMap(String displayName, Location[][] spawnLocations, double minY, Location center) {
+        GameMap(String displayName, Location[][] spawnLocations, double minY) {
             this.displayName = displayName;
             this.spawnLocations = spawnLocations;
             this.minY = minY;
-            this.center = center;
         }
 
         public String getDisplayName() {
@@ -236,13 +231,6 @@ public class GameSession implements Listener {
 
     protected void sendMetadata(Player player, String key, double value) {
         player.sendMessage(String.format("metadata:%s:%.5f", key, value));
-    }
-
-    protected double distanceToCenter2d(Location location) {
-        double dx = map.center.getX() - location.getX();
-        double dz = map.center.getZ() - location.getZ();
-
-        return Math.sqrt(dx * dx + dz * dz);
     }
 
     protected Player getOtherPlayer(Player player) {
