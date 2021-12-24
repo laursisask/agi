@@ -23,42 +23,42 @@ public class GameSession implements Listener {
         CLASSIC_SUMO(
                 "Classic Sumo",
                 new Location[][]{
-                        new Location[]{new Location(null, -17.5, 77, 33.5, 90, 0), new Location(null, -29.5, 77, 33.5, -90, 0)},
-                        new Location[]{new Location(null, -23.5, 77, 39.5, 180, 0), new Location(null, -23.5, 77, 27.5, 0, 0)}
+                        new Location[]{new Location(null, 127.5, 44, 93.5, -90, 0), new Location(null, 139.5, 44, 93.5, 90, 0)},
+                        new Location[]{new Location(null, 133.5, 44, 99, -180, 0), new Location(null, 133.5, 44, 87.5, 0, 0)}
                 },
-                73
+                41
         ),
         SPACE_MINE(
                 "Space Mine",
                 new Location[][]{
-                        new Location[]{new Location(null, 101.5, 98, -188.5, 90, 0), new Location(null, 89.5, 98, -188.5, -90, 0)},
-                        new Location[]{new Location(null, 95.5, 98, -182.5, -180, 0), new Location(null, 95.5, 98, -194.5, 0, 0)}
+                        new Location[]{new Location(null, 161.5, 144, 54.5, -90, 0), new Location(null, 173.5, 144, 54.5, 90, 0)},
+                        new Location[]{new Location(null, 167.5, 144, 60.5, -180, 0), new Location(null, 167.5, 144, 48.5, 0, 0)}
                 },
-                93
+                141
         ),
         WHITE_CRYSTAL(
                 "White Crystal",
                 new Location[][]{
-                        new Location[]{new Location(null, 179.5, 80, -21.5, -90, 0), new Location(null, 191.5, 80, -21.5, 90, 0)},
-                        new Location[]{new Location(null, 185.5, 80, -15.5, 180, 0), new Location(null, 185.5, 80, -27.5, 0, 0)}
+                        new Location[]{new Location(null, 214.5, 46, 169.5, -90, 0), new Location(null, 226.5, 46, 169.5, 90, 0)},
+                        new Location[]{new Location(null, 220.5, 46, 175.5, 180, 0), new Location(null, 220.5, 46, 163.5, 0, 0)}
                 },
-                74
+                43
         ),
         PONSEN(
                 "Ponsen",
                 new Location[][]{
-                        new Location[]{new Location(null, 59.5, 67, -30.5, -90, 0), new Location(null, 71.5, 67, -30.5, 90, 0)},
-                        new Location[]{new Location(null, 65.5, 67, -24.5, 180, 0), new Location(null, 65.5, 67, -36.5, 0, 0)}
+                        new Location[]{new Location(null, 216.5, 33, 29.5, -90, 0), new Location(null, 228.5, 33, 29.5, 90, 0)},
+                        new Location[]{new Location(null, 222.5, 33, 35.5, 180, 0), new Location(null, 222.5, 33, 23.5, 0, 0)}
                 },
-                60
+                30
         ),
         FORT_ROYALE(
                 "Fort Royale",
                 new Location[][]{
-                        new Location[]{new Location(null, -45.5, 78, -74.5, -90, 0), new Location(null, -33.5, 78, -74.5, 90, 0)},
-                        new Location[]{new Location(null, -39.5, 78, -68.5, 180, 0), new Location(null, -39.5, 78, -80.5, 0, 0)}
+                        new Location[]{new Location(null, 119.5, 44, 12.5, 90, 0), new Location(null, 107.5, 44, 12.5, -90, 0)},
+                        new Location[]{new Location(null, 113.5, 44, 6.5, 0, 0), new Location(null, 113.5, 44, 18.5, 180, 0)}
                 },
-                71
+                41
         );
 
         private final String displayName;
