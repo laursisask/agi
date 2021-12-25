@@ -1,6 +1,7 @@
 name: DuelsHub
 version: 1.0.0-SNAPSHOT
 main: xyz.laur.duels.DuelsHubPlugin
+depend: [ProtocolLib]
 commands:
   join:
     description: Joins a game session
