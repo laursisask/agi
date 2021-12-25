@@ -28,18 +28,20 @@ public class JoinCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length != 2) {
+        if (args.length != 3) {
             return false;
         }
 
         String sessionName = args[0];
         float randomizationFactor = Float.parseFloat(args[1]);
 
+        GameSession.GameMap map = GameSession.GameMap.fromName(args[2]);
+
         GameSession session = sessionManager.getByName(sessionName);
 
         if (session == null) {
             plugin.getLogger().info("Creating new session");
-            session = new GameSession(world, sessionManager, invisibilityManager, plugin, randomizationFactor);
+            session = new GameSession(world, sessionManager, invisibilityManager, plugin, randomizationFactor, map);
             sessionManager.addSession(sessionName, session);
         }
 

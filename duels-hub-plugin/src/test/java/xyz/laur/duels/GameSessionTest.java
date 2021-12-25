@@ -45,7 +45,7 @@ public class GameSessionTest {
 
         world = mock(World.class);
 
-        session = new GameSession(world, sessionManager, invisibilityManager, plugin, 0F);
+        session = new GameSession(world, sessionManager, invisibilityManager, plugin, 0F, GameSession.GameMap.PONSEN);
     }
 
     @Test
@@ -117,7 +117,7 @@ public class GameSessionTest {
 
         ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
         verify(scheduler, times(1))
-            .scheduleSyncDelayedTask(any(Plugin.class), task.capture(), eq(GameSession.MAX_DURATION));
+                .scheduleSyncDelayedTask(any(Plugin.class), task.capture(), eq(GameSession.MAX_DURATION));
 
         task.getValue().run();
         assertEquals(GameSession.State.ENDED, session.getState());

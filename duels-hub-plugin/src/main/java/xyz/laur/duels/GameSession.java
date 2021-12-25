@@ -10,7 +10,9 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class GameSession implements Listener {
     public static final long MAX_DURATION = 6000; // 5 minutes
@@ -71,6 +73,16 @@ public class GameSession implements Listener {
             this.minY = minY;
         }
 
+        public static GameMap fromName(String name) {
+            for (GameMap map : values()) {
+                if (map.name().equalsIgnoreCase(name)) {
+                    return map;
+                }
+            }
+
+            throw new IllegalArgumentException("No map with name " + name);
+        }
+
         public String getDisplayName() {
             return displayName;
         }
@@ -86,12 +98,11 @@ public class GameSession implements Listener {
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                       Plugin plugin, float randomizationFactor) {
+                       Plugin plugin, float randomizationFactor, GameMap map) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.plugin = plugin;
-
-        map = pickMap(randomizationFactor);
+        this.map = map;
 
         int spawnLocPair = pickSpawnLocationPair(randomizationFactor);
 
@@ -182,17 +193,6 @@ public class GameSession implements Listener {
 
     public boolean hasPlayer(Player player) {
         return players.contains(player);
-    }
-
-    protected static GameMap pickMap(float randomizationFactor) {
-        // when randomizationFactor 0 - always pick same map (White Crystal)
-        // when randomizationFactor 1 - pick completely randomly
-
-        if (random.nextDouble() < randomizationFactor) {
-            return GameMap.values()[random.nextInt(GameMap.values().length)];
-        }
-
-        return GameMap.WHITE_CRYSTAL;
     }
 
     protected static int pickSpawnLocationPair(float randomizationFactor) {
