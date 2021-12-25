@@ -93,14 +93,16 @@ public class GameSession implements Listener {
     private final GameMap map;
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
+    private final SkinChanger skinChanger;
     private final Plugin plugin;
     private final Location[] spawnLocations;
     private static final Random random = new Random();
 
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                       Plugin plugin, float randomizationFactor, GameMap map) {
+                       SkinChanger skinChanger, Plugin plugin, float randomizationFactor, GameMap map) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
+        this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.map = map;
 
@@ -157,6 +159,7 @@ public class GameSession implements Listener {
 
         for (int i = 0; i < players.size(); i++) {
             Player player = players.get(i);
+            skinChanger.changeSkin(player);
 
             player.teleport(spawnLocations[i]);
 

@@ -11,12 +11,15 @@ import org.bukkit.plugin.Plugin;
 public class JoinCommand implements CommandExecutor {
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
+    private final SkinChanger skinChanger;
     private final Plugin plugin;
     private final World world;
 
-    public JoinCommand(SessionManager sessionManager, InvisibilityManager invisibilityManager, Plugin plugin, World world) {
+    public JoinCommand(SessionManager sessionManager, InvisibilityManager invisibilityManager, SkinChanger skinChanger,
+                       Plugin plugin, World world) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
+        this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.world = world;
     }
@@ -41,7 +44,8 @@ public class JoinCommand implements CommandExecutor {
 
         if (session == null) {
             plugin.getLogger().info("Creating new session");
-            session = new GameSession(world, sessionManager, invisibilityManager, plugin, randomizationFactor, map);
+            session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
+                    randomizationFactor, map);
             sessionManager.addSession(sessionName, session);
         }
 

@@ -29,7 +29,10 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         invisibilityManager = new InvisibilityManager(sessionManager, world);
         invisibilityManager.update();
 
-        getCommand("join").setExecutor(new JoinCommand(sessionManager, invisibilityManager, this, world));
+        SkinChanger skinChanger = new SkinChanger(this);
+
+        getCommand("join").setExecutor(new JoinCommand(sessionManager, invisibilityManager, skinChanger,
+                this, world));
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
         getServer().getPluginManager().registerEvents(this, this);

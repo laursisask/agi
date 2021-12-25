@@ -39,7 +39,9 @@ public class JoinCommandTest {
 
         World world = mock(World.class);
 
-        command = new JoinCommand(sessionManager, invisibilityManager, plugin, world);
+        SkinChanger skinChanger = mock(SkinChanger.class);
+
+        command = new JoinCommand(sessionManager, invisibilityManager, skinChanger, plugin, world);
     }
 
     @Test
