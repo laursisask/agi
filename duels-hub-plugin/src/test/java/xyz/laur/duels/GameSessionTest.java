@@ -45,7 +45,9 @@ public class GameSessionTest {
 
         world = mock(World.class);
 
-        session = new GameSession(world, sessionManager, invisibilityManager, plugin, 0F, GameSession.GameMap.PONSEN);
+        SkinChanger skinChanger = mock(SkinChanger.class);
+
+        session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, 0F, GameSession.GameMap.PONSEN);
     }
 
     @Test
