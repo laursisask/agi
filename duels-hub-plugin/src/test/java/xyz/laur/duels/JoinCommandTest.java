@@ -12,9 +12,11 @@ import org.junit.Test;
 
 import java.util.logging.Logger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static xyz.laur.duels.GameSession.GameMap.FORT_ROYALE;
 
 public class JoinCommandTest {
     private JoinCommand command;
@@ -46,14 +48,17 @@ public class JoinCommandTest {
         Player sender1 = mock(Player.class);
         when(sender1.getInventory()).thenReturn(inventory);
 
-        assertTrue(command.onCommand(sender1, null, "join", new String[]{"abc123", "0.334"}));
+        assertTrue(command.onCommand(sender1, null, "join",
+                new String[]{"abc123", "0.334", "fort_royale"}));
         GameSession session = sessionManager.getByName("abc123");
         assertTrue(session.hasPlayer(sender1));
+        assertEquals(FORT_ROYALE, session.getMap());
 
         Player sender2 = mock(Player.class);
         when(sender2.getInventory()).thenReturn(inventory);
 
-        assertTrue(command.onCommand(sender2, null, "join", new String[]{"abc123", "0.334"}));
+        assertTrue(command.onCommand(sender2, null, "join",
+                new String[]{"abc123", "0.334", "fort_royale"}));
         assertTrue(session.hasPlayer(sender2));
     }
 }

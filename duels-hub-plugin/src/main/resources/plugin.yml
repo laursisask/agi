@@ -4,7 +4,7 @@ main: xyz.laur.duels.DuelsHubPlugin
 commands:
   join:
     description: Joins a game session
-    usage: /join <session ID> <randomization factor>
+    usage: /join <session ID> <randomization factor> <map name>
   games:
     description: Lists all ongoing games
     usage: /games
