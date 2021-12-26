@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import random
+import statistics
 from threading import Thread
 
 import cv2
@@ -17,6 +18,75 @@ from duels_training.ppo import collect_data_and_train
 from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import compute_log_prob_dists, sample_action
 from duels_training.sumo_preprocessing import transform_raw_state
+
+
+class EpisodeStatsAggregator:
+    def __init__(self, metrics):
+        self.metrics = metrics
+
+    def __call__(self, global_it, trajectories):
+        avg_reward = statistics.mean([sum(trajectory.rewards) for trajectory in trajectories])
+        logging.info(f"Average reward was {avg_reward:.3f}")
+        self.metrics.add_scalar("Average reward", avg_reward, global_it)
+
+        avg_length = statistics.mean([len(trajectory.actions) for trajectory in trajectories])
+        logging.info(f"Average episode length was {avg_length:.1f} steps")
+        self.metrics.add_scalar("Average length", avg_length, global_it)
+
+        avg_hits_done = self.compute_average_metadata_value(trajectories, "hits_done")
+        logging.info(f"Average number of hits done per episode was {avg_hits_done:.2f}")
+        self.metrics.add_scalar("Average number of hits done", avg_hits_done, global_it)
+
+        avg_hits_received = self.compute_average_metadata_value(trajectories, "hits_received")
+        logging.info(f"Average number of hits received per episode was {avg_hits_received:.2f}")
+        self.metrics.add_scalar("Average number of hits received", avg_hits_received, global_it)
+
+        avg_attack_step_fraction = self.compute_fraction_of_steps(
+            trajectories,
+            lambda action: tensor_to_action(action).attacking
+        )
+        logging.info(f"Average attack step fraction per episode was {avg_attack_step_fraction:.2f}")
+        self.metrics.add_scalar("Average attack step fraction", avg_attack_step_fraction, global_it)
+
+        avg_jump_step_fraction = self.compute_fraction_of_steps(
+            trajectories,
+            lambda action: tensor_to_action(action).jumping
+        )
+        logging.info(f"Average jumping step fraction per episode was {avg_jump_step_fraction:.2f}")
+        self.metrics.add_scalar("Average jumping step fraction", avg_jump_step_fraction, global_it)
+
+        avg_sprint_step_fraction = self.compute_fraction_of_steps(
+            trajectories,
+            lambda action: tensor_to_action(action).sprinting
+        )
+        logging.info(f"Average sprinting step fraction per episode was {avg_sprint_step_fraction:.2f}")
+        self.metrics.add_scalar("Average sprinting step fraction", avg_sprint_step_fraction, global_it)
+
+    @staticmethod
+    def compute_average_metadata_value(trajectories, key):
+        values = []
+
+        for trajectory in trajectories:
+            episode_cumulative = 0
+            for metadata in trajectory.metadatas:
+                if key in metadata:
+                    episode_cumulative += metadata[key]
+            values.append(episode_cumulative)
+
+        return statistics.mean(values)
+
+    @staticmethod
+    def compute_fraction_of_steps(trajectories, filter_fn):
+        values = []
+
+        for trajectory in trajectories:
+            matching_steps = 0
+            for action in trajectory.actions:
+                if filter_fn(action):
+                    matching_steps += 1
+            values.append(matching_steps / len(trajectory))
+
+        return statistics.mean(values)
 
 
 class OpponentSampler:
@@ -129,7 +199,7 @@ class SumoEnv:
         return transform_raw_state(raw_observation), total_reward, done, metadata
 
     def calculate_exploration_reward(self, metadata):
-        if "hit" not in metadata:
+        if "hits_done" not in metadata and "hits_received" not in metadata:
             return 0
 
         global_it = self.get_global_iteration()
@@ -145,7 +215,7 @@ class SumoEnv:
         else:
             exploration_coefficient = (annealing_end - global_it) / (annealing_end - annealing_start)
 
-        return exploration_coefficient * 5 * metadata["hit"]
+        return exploration_coefficient * 5 * (metadata.get("hits_done", 0) - metadata.get("hits_received", 0))
 
     def play_as_opponent(self, model, session):
         observation = transform_raw_state(self.client2.reset(
@@ -401,6 +471,8 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         nonlocal global_iteration
         global_iteration = new_global_iteration
 
+    episode_stats_aggregator = EpisodeStatsAggregator(metrics)
+
     num_clients = 6
     assert num_clients % 2 == 0
 
@@ -437,6 +509,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         value_coefficient=1.0,
         entropy_coefficient=0.01,
         post_iteration_callback=post_iteration_callback,
+        post_data_collect_callback=episode_stats_aggregator,
         start_global_iteration=1 if start_global_iteration is None else start_global_iteration,
         start_train_iteration=0 if start_train_iteration is None else start_train_iteration
     )
