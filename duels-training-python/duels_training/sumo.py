@@ -186,7 +186,8 @@ class SumoEnv:
         return transform_raw_state(raw_observation)
 
     def step(self, action):
-        raw_observation, game_reward, done, metadata = self.client1.step(tensor_to_action(action))
+        terminator_action = tensor_to_action(action)
+        raw_observation, game_reward, done, metadata = self.client1.step(terminator_action)
 
         if self.record_episode:
             self.recorder.write(cv2.flip(raw_observation.camera.numpy(), 0))
@@ -194,11 +195,14 @@ class SumoEnv:
             if done:
                 self.recorder.release()
 
-        total_reward = game_reward + self.calculate_exploration_reward(metadata)
+        total_reward = game_reward + self.calculate_exploration_reward(metadata, terminator_action)
 
         return transform_raw_state(raw_observation), total_reward, done, metadata
 
-    def calculate_exploration_reward(self, metadata):
+    def calculate_exploration_reward(self, metadata, action):
+        return self.calculate_hit_reward(metadata) + self.calculate_attack_reward(action)
+
+    def calculate_hit_reward(self, metadata):
         if "hits_done" not in metadata and "hits_received" not in metadata:
             return 0
 
@@ -216,6 +220,12 @@ class SumoEnv:
             exploration_coefficient = (annealing_end - global_it) / (annealing_end - annealing_start)
 
         return exploration_coefficient * 5 * (metadata.get("hits_done", 0) - metadata.get("hits_received", 0))
+
+    def calculate_attack_reward(self, action):
+        if self.get_global_iteration() > 700 and action.attacking:
+            return -0.1
+        else:
+            return 0
 
     def play_as_opponent(self, model, session):
         observation = transform_raw_state(self.client2.reset(
