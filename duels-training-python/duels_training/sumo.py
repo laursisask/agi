@@ -19,13 +19,34 @@ from duels_training.sumo_policy import compute_log_prob_dists, sample_action
 from duels_training.sumo_preprocessing import transform_raw_state
 
 
+class OpponentSampler:
+    def __init__(self, device, opponent_models, opponent_sampling_index):
+        assert 0 < opponent_sampling_index <= 1
+
+        self.device = device
+        self.opponent_models = opponent_models
+        self.opponent_sampling_index = opponent_sampling_index
+
+    def sample(self):
+        min_index = math.floor((1 - self.opponent_sampling_index) * len(self.opponent_models))
+        max_index = len(self.opponent_models) - 1
+
+        index = random.randint(min_index, max_index)
+        model = self.opponent_models[index]
+
+        model_copy = copy.deepcopy(model)
+        model_copy.to(self.device)
+
+        return model_copy
+
+
 class SumoEnv:
-    def __init__(self, device, client1, client2, opponent_models, get_global_iteration):
+    def __init__(self, device, client1, client2, opponent_models, get_global_iteration, opponent_sampling_index=1.0):
         self.device = device
         self.client1 = client1
         self.client2 = client2
-        self.opponent_models = opponent_models
         self.get_global_iteration = get_global_iteration
+        self.opponent_sampler = OpponentSampler(device, opponent_models, opponent_sampling_index)
         self.record_episode = False
         self.recorder = None
         self.opponent_thread = None
@@ -38,7 +59,7 @@ class SumoEnv:
 
         session = self.client1.create_session()
 
-        opponent_model = self.get_opponent_model()
+        opponent_model = self.opponent_sampler.sample()
 
         if self.opponent_thread:
             self.opponent_thread.join()
@@ -69,18 +90,6 @@ class SumoEnv:
         total_reward = game_reward + self.calculate_exploration_reward(metadata)
 
         return transform_raw_state(raw_observation), total_reward, done, metadata
-
-    def get_opponent_model(self):
-        if len(self.opponent_models) < 50:
-            model = random.choice(self.opponent_models)
-        else:
-            index = random.randint(len(self.opponent_models) // 2, len(self.opponent_models) - 1)
-            model = self.opponent_models[index]
-
-        model_copy = copy.deepcopy(model)
-        model_copy.to(self.device)
-
-        return model_copy
 
     def calculate_exploration_reward(self, metadata):
         if "hit" not in metadata:
