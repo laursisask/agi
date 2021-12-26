@@ -5,7 +5,8 @@ import pytest
 import torch
 from terminator import Action
 
-from duels_training.sumo import action_log_probs, sample_action, compute_entropies, OpponentSampler
+from duels_training.sumo import action_log_probs, sample_action, compute_entropies, OpponentSampler, get_available_maps, \
+    get_next_map
 
 
 def inverse_sigmoid(x):
@@ -166,3 +167,26 @@ def test_opponent_sampler():
         indices.append(index)
 
     assert len(set(indices)) > 70
+
+
+def test_get_available_maps():
+    assert get_available_maps(0) == ["white_crystal"]
+    assert get_available_maps(105) == ["white_crystal"]
+    assert get_available_maps(199) == ["white_crystal"]
+    assert get_available_maps(200) == ["white_crystal"]
+    assert get_available_maps(201) == ["white_crystal"]
+    assert get_available_maps(300) == ["white_crystal", "classic_sumo"]
+    assert get_available_maps(317) == ["white_crystal", "classic_sumo"]
+    assert get_available_maps(350) == ["white_crystal", "classic_sumo"]
+    assert get_available_maps(400) == ["white_crystal", "classic_sumo", "space_mine"]
+    assert get_available_maps(500) == ["white_crystal", "classic_sumo", "space_mine", "ponsen"]
+    assert get_available_maps(600) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
+    assert get_available_maps(601) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
+    assert get_available_maps(700) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
+    assert get_available_maps(1200) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
+
+
+def test_get_next_map():
+    results = [get_next_map("classic_sumo", global_iteration=420) for _ in range(100)]
+
+    assert results.count("classic_sumo") == pytest.approx(93, abs=5)

@@ -40,6 +40,37 @@ class OpponentSampler:
         return model_copy
 
 
+MAPS = ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
+
+
+def get_available_maps(global_iteration, add_maps_start=200, add_maps_end=600):
+    if global_iteration < add_maps_start:
+        available_maps = MAPS[:1]
+    elif global_iteration > add_maps_end:
+        available_maps = MAPS
+    else:
+        max_index = math.floor(
+            (global_iteration - add_maps_start) / (add_maps_end - add_maps_start) * (len(MAPS) - 1) + 1
+        )
+
+        available_maps = MAPS[:max_index]
+
+    return available_maps
+
+
+def get_next_map(current_map, global_iteration):
+    available_maps = get_available_maps(global_iteration)
+
+    avg_episodes_per_iteration = 50
+    episodes_per_map = avg_episodes_per_iteration / len(available_maps)
+    change_map_prob = 1 / episodes_per_map
+
+    if current_map is None or random.random() < change_map_prob:
+        return random.choice(available_maps)
+    else:
+        return current_map
+
+
 class SumoEnv:
     def __init__(self, device, client1, client2, opponent_models, get_global_iteration, opponent_sampling_index=1.0):
         self.device = device
@@ -50,12 +81,14 @@ class SumoEnv:
         self.record_episode = False
         self.recorder = None
         self.opponent_thread = None
+        self.current_map = None
 
     def reset(self):
         if self.record_episode and self.recorder.isOpened():
             self.recorder.release()
 
         self.record_episode = random.random() < 0.01
+        self.current_map = get_next_map(self.current_map, self.get_global_iteration())
 
         session = self.client1.create_session()
 
@@ -67,7 +100,11 @@ class SumoEnv:
         self.opponent_thread = Thread(target=self.play_as_opponent, args=(opponent_model, session), daemon=True)
         self.opponent_thread.start()
 
-        raw_observation = self.client1.reset(session)
+        raw_observation = self.client1.reset(
+            session=session,
+            randomization_factor=1.0,
+            map_name=self.current_map
+        )
 
         if self.record_episode:
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -111,7 +148,11 @@ class SumoEnv:
         return exploration_coefficient * 5 * metadata["hit"]
 
     def play_as_opponent(self, model, session):
-        observation = transform_raw_state(self.client2.reset(session))
+        observation = transform_raw_state(self.client2.reset(
+            session=session,
+            randomization_factor=1.0,
+            map_name=self.current_map
+        ))
 
         policy_state = PolicyState(
             model=model,
