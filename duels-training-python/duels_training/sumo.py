@@ -1,3 +1,4 @@
+import argparse
 import copy
 import datetime
 import json
@@ -142,7 +143,9 @@ def get_next_map(current_map, global_iteration):
 
 
 class SumoEnv:
-    def __init__(self, device, client1, client2, opponent_models, get_global_iteration, opponent_sampling_index=1.0):
+    def __init__(self, run_id, device, client1, client2, opponent_models, get_global_iteration,
+                 opponent_sampling_index=1.0):
+        self.run_id = run_id
         self.device = device
         self.client1 = client1
         self.client2 = client2
@@ -178,7 +181,7 @@ class SumoEnv:
 
         if self.record_episode:
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            file = f"videos/{datetime.datetime.now().isoformat()}.mp4"
+            file = f"artifacts/{self.run_id}/videos/{datetime.datetime.now().isoformat()}.mp4"
             os.makedirs(os.path.dirname(file), exist_ok=True)
             self.recorder = cv2.VideoWriter(file, fourcc, 30, (84, 84), False)
             self.recorder.write(cv2.flip(raw_observation.camera.numpy(), 0))
@@ -419,9 +422,11 @@ class Policy:
         return compute_entropies(policy_dists)
 
 
-def train(initial_model, initial_optimizer, start_global_iteration, start_train_iteration, log_dir):
+def train(initial_model, initial_optimizer, start_global_iteration, start_train_iteration, log_dir, run_id):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using {device} device")
+
+    os.makedirs(f"artifacts/{run_id}", exist_ok=True)
 
     if log_dir is None:
         metrics = SummaryWriter()
@@ -454,7 +459,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
 
         for i in range(1, start_global_iteration):
             opponent_model = SumoModel()
-            state_dict = torch.load(f"models/{i}.pt", map_location=torch.device("cpu"))
+            state_dict = torch.load(f"artifacts/{run_id}/models/{i}.pt", map_location=torch.device("cpu"))
             opponent_model.load_state_dict(state_dict)
 
             opponent_models.append(opponent_model)
@@ -467,10 +472,10 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         model_copy.eval()
         opponent_models.append(model_copy)
 
-        os.makedirs("models", exist_ok=True)
-        torch.save(model_copy.state_dict(), f"models/{new_global_iteration}.pt")
+        os.makedirs(f"artifacts/{run_id}/models", exist_ok=True)
+        torch.save(model_copy.state_dict(), f"artifacts/{run_id}/models/{new_global_iteration}.pt")
 
-        with open("last_iteration.json", "w") as file:
+        with open(f"artifacts/{run_id}/last_iteration.json", "w") as file:
             last_iteration = {
                 "global_iteration": new_global_iteration,
                 "train_iteration": train_iteration,
@@ -494,6 +499,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         clients.append(client)
 
     envs = [SumoEnv(
+        run_id=run_id,
         device=device,
         client1=clients[i],
         client2=clients[i + 1],
@@ -521,20 +527,26 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         post_iteration_callback=post_iteration_callback,
         post_data_collect_callback=episode_stats_aggregator,
         start_global_iteration=1 if start_global_iteration is None else start_global_iteration,
-        start_train_iteration=0 if start_train_iteration is None else start_train_iteration
+        start_train_iteration=0 if start_train_iteration is None else start_train_iteration,
+        assets_dir=f"artifacts/{run_id}"
     )
 
 
 def main():
     configure_logger()
 
-    if os.path.exists("last_iteration.json"):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--id", required=True)
+
+    args = parser.parse_args()
+
+    if os.path.exists(f"artifacts/{args.id}/last_iteration.json"):
         print("Continuing training")
 
-        initial_model = "last_model.pt"
-        initial_optimizer = "last_optimizer.pt"
+        initial_model = f"artifacts/{args.id}/last_model.pt"
+        initial_optimizer = f"artifacts/{args.id}/last_optimizer.pt"
 
-        with open("last_iteration.json", "r") as file:
+        with open(f"artifacts/{args.id}/last_iteration.json", "r") as file:
             last_iteration = json.load(file)
 
         start_global_iteration = last_iteration["global_iteration"] + 1
@@ -554,7 +566,8 @@ def main():
         initial_optimizer,
         start_global_iteration,
         start_train_iteration,
-        log_dir
+        log_dir,
+        args.id
     )
 
 
