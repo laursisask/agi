@@ -488,7 +488,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
 
     episode_stats_aggregator = EpisodeStatsAggregator(metrics)
 
-    num_clients = 6
+    num_clients = 8
     assert num_clients % 2 == 0
 
     clients = []
