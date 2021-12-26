@@ -141,8 +141,8 @@ public class GameSessionTest {
 
         session.onPlayerDamage(damageEvent);
 
-        verify(player1, times(1)).sendMessage("metadata:hit:1.00000");
-        verify(player2, times(1)).sendMessage("metadata:hit:-1.00000");
+        verify(player1, times(1)).sendMessage("metadata:hits_done:1.00000");
+        verify(player2, times(1)).sendMessage("metadata:hits_received:1.00000");
     }
 
     protected Player createMockPlayer() {

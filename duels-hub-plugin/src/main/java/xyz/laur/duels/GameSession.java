@@ -241,8 +241,8 @@ public class GameSession implements Listener {
         Player target = (Player) event.getEntity();
 
         if (hasPlayer(attacker) && hasPlayer(target)) {
-            sendMetadata(attacker, "hit", 1);
-            sendMetadata(target, "hit", -1);
+            sendMetadata(attacker, "hits_done", 1);
+            sendMetadata(target, "hits_received", 1);
         }
     }
 

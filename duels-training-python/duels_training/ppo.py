@@ -2,7 +2,6 @@ import copy
 import logging
 import math
 import os
-import statistics
 import threading
 import time
 from dataclasses import dataclass
@@ -362,27 +361,6 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
     return iteration
 
 
-def compute_average_reward(trajectories):
-    episode_rewards = [sum(trajectory.rewards) for trajectory in trajectories]
-    return statistics.mean(episode_rewards)
-
-
-def compute_average_length(trajectories):
-    episode_lengths = [len(trajectory.actions) for trajectory in trajectories]
-    return statistics.mean(episode_lengths)
-
-
-def compute_average_hits(trajectories):
-    hits = 0
-
-    for trajectory in trajectories:
-        for metadata in trajectory.metadatas:
-            if "hit" in metadata:
-                hits += metadata["hit"]
-
-    return hits / len(trajectories)
-
-
 def run_episodes_parallel(policy, envs, num_steps, min_episodes):
     trajectories = []
     steps_done = 0
@@ -420,22 +398,13 @@ def run_episodes_parallel(policy, envs, num_steps, min_episodes):
 def collect_data_and_train_iteration(device, policy, envs, model, optimizer, metrics, steps_per_iteration,
                                      train_it, global_it, critic, bootstrap_length, num_epochs, batch_size,
                                      backpropagation_steps, clip_range, max_grad_norm, value_coefficient,
-                                     entropy_coefficient, assets_dir):
+                                     entropy_coefficient, assets_dir, callback_fn):
     trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, batch_size)
-    avg_reward = compute_average_reward(trajectories)
-    avg_length = compute_average_length(trajectories)
-    avg_hits = compute_average_hits(trajectories)
-
-    logging.info(f"Average reward was {avg_reward:.3f}")
-    metrics.add_scalar("Average reward", avg_reward, global_it)
-
-    logging.info(f"Average episode length was {avg_length:.1f} steps")
-    metrics.add_scalar("Average length", avg_length, global_it)
-
-    logging.info(f"Average number of hits per episode was {avg_hits:.2f}")
-    metrics.add_scalar("Average number of hits", avg_hits, global_it)
 
     logging.info("Data collection phase finished")
+
+    if callback_fn is not None:
+        callback_fn(global_it, trajectories)
 
     dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length)
     del trajectories
@@ -481,6 +450,7 @@ def collect_data_and_train(
         value_coefficient=1.0,
         entropy_coefficient=0.01,
         post_iteration_callback=None,
+        post_data_collect_callback=None,
         start_global_iteration=1,
         start_train_iteration=0,
         assets_dir="."
@@ -514,7 +484,8 @@ def collect_data_and_train(
             max_grad_norm=max_grad_norm,
             value_coefficient=value_coefficient,
             entropy_coefficient=entropy_coefficient,
-            assets_dir=assets_dir
+            assets_dir=assets_dir,
+            callback_fn=post_data_collect_callback
         )
 
         end_time = time.time()
