@@ -204,8 +204,8 @@ class SumoEnv:
 
         global_it = self.get_global_iteration()
 
-        annealing_start = 1850
-        annealing_end = 2050
+        annealing_start = 1000
+        annealing_end = 2000
 
         if global_it > annealing_end:
             return 0
