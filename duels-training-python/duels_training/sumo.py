@@ -34,6 +34,10 @@ class EpisodeStatsAggregator:
         logging.info(f"Average episode length was {avg_length:.1f} steps")
         self.metrics.add_scalar("Average length", avg_length, global_it)
 
+        avg_win_rate = self.compute_average_metadata_value(trajectories, "win")
+        logging.info(f"Average win rate per episode was {avg_win_rate:.2f}")
+        self.metrics.add_scalar("Average win rate", avg_win_rate, global_it)
+
         avg_hits_done = self.compute_average_metadata_value(trajectories, "hits_done")
         logging.info(f"Average number of hits done per episode was {avg_hits_done:.2f}")
         self.metrics.add_scalar("Average number of hits done", avg_hits_done, global_it)

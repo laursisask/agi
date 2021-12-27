@@ -185,9 +185,11 @@ public class GameSession implements Listener {
                 player.sendMessage("You lost");
             }
         } else {
+            sendMetadata(winner, "win", 1);
+            winner.sendMessage("You won");
+
             Player loser = getOtherPlayer(winner);
             loser.sendMessage("You lost");
-            winner.sendMessage("You won");
         }
 
         sessionManager.removeSession(this);
