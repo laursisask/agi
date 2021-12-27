@@ -87,7 +87,10 @@ public class GameSessionTest {
         session.onMove(new PlayerMoveEvent(player1, from, to));
         assertEquals(GameSession.State.ENDED, session.getState());
         verify(player1, times(1)).sendMessage("You lost");
+        verify(player1, never()).sendMessage(startsWith("metadata:win"));
+
         verify(player2, times(1)).sendMessage("You won");
+        verify(player2, times(1)).sendMessage("metadata:win:1.00000");
         verify(invisibilityManager, times(3)).update();
     }
 
@@ -103,8 +106,12 @@ public class GameSessionTest {
 
         session.onQuit(new PlayerQuitEvent(player2, null));
         assertEquals(GameSession.State.ENDED, session.getState());
+
         verify(player1, times(1)).sendMessage("You won");
+        verify(player1, times(1)).sendMessage("metadata:win:1.00000");
+
         verify(player2, times(1)).sendMessage("You lost");
+        verify(player2, never()).sendMessage(startsWith("metadata:win"));
     }
 
     @Test
@@ -124,7 +131,10 @@ public class GameSessionTest {
         task.getValue().run();
         assertEquals(GameSession.State.ENDED, session.getState());
         verify(player1, times(1)).sendMessage("You lost");
+        verify(player1, never()).sendMessage(startsWith("metadata:win"));
+
         verify(player2, times(1)).sendMessage("You lost");
+        verify(player2, never()).sendMessage(startsWith("metadata:win"));
     }
 
     @Test
