@@ -1,5 +1,6 @@
 import argparse
 import copy
+import csv
 import datetime
 import json
 import logging
@@ -22,50 +23,64 @@ from duels_training.sumo_preprocessing import transform_raw_state
 
 
 class EpisodeStatsAggregator:
-    def __init__(self, metrics):
-        self.metrics = metrics
+    def __init__(self, run_id, tensorboard):
+        self.tensorboard = tensorboard
+
+        path = f"artifacts/{run_id}/metrics.csv"
+        if os.path.exists(path):
+            self.metrics_file = open(path, "a")
+            self.csv_writer = csv.writer(self.metrics_file)
+        else:
+            self.metrics_file = open(path, "w")
+            self.csv_writer = csv.writer(self.metrics_file)
+            self.csv_writer.writerow(["iteration", "reward", "length", "win_rate", "hits_done", "hits_received",
+                                      "attack_step_fraction", "jump_step_fraction", "sprint_step_fraction"])
 
     def __call__(self, global_it, trajectories):
         avg_reward = statistics.mean([sum(trajectory.rewards) for trajectory in trajectories])
         logging.info(f"Average reward was {avg_reward:.3f}")
-        self.metrics.add_scalar("Average reward", avg_reward, global_it)
+        self.tensorboard.add_scalar("Average reward", avg_reward, global_it)
 
         avg_length = statistics.mean([len(trajectory.actions) for trajectory in trajectories])
         logging.info(f"Average episode length was {avg_length:.1f} steps")
-        self.metrics.add_scalar("Average length", avg_length, global_it)
+        self.tensorboard.add_scalar("Average length", avg_length, global_it)
 
         avg_win_rate = self.compute_average_metadata_value(trajectories, "win")
         logging.info(f"Average win rate per episode was {avg_win_rate:.2f}")
-        self.metrics.add_scalar("Average win rate", avg_win_rate, global_it)
+        self.tensorboard.add_scalar("Average win rate", avg_win_rate, global_it)
 
         avg_hits_done = self.compute_average_metadata_value(trajectories, "hits_done")
         logging.info(f"Average number of hits done per episode was {avg_hits_done:.2f}")
-        self.metrics.add_scalar("Average number of hits done", avg_hits_done, global_it)
+        self.tensorboard.add_scalar("Average number of hits done", avg_hits_done, global_it)
 
         avg_hits_received = self.compute_average_metadata_value(trajectories, "hits_received")
         logging.info(f"Average number of hits received per episode was {avg_hits_received:.2f}")
-        self.metrics.add_scalar("Average number of hits received", avg_hits_received, global_it)
+        self.tensorboard.add_scalar("Average number of hits received", avg_hits_received, global_it)
 
         avg_attack_step_fraction = self.compute_fraction_of_steps(
             trajectories,
             lambda action: tensor_to_action(action).attacking
         )
         logging.info(f"Average attack step fraction per episode was {avg_attack_step_fraction:.2f}")
-        self.metrics.add_scalar("Average attack step fraction", avg_attack_step_fraction, global_it)
+        self.tensorboard.add_scalar("Average attack step fraction", avg_attack_step_fraction, global_it)
 
         avg_jump_step_fraction = self.compute_fraction_of_steps(
             trajectories,
             lambda action: tensor_to_action(action).jumping
         )
         logging.info(f"Average jumping step fraction per episode was {avg_jump_step_fraction:.2f}")
-        self.metrics.add_scalar("Average jumping step fraction", avg_jump_step_fraction, global_it)
+        self.tensorboard.add_scalar("Average jumping step fraction", avg_jump_step_fraction, global_it)
 
         avg_sprint_step_fraction = self.compute_fraction_of_steps(
             trajectories,
             lambda action: tensor_to_action(action).sprinting
         )
         logging.info(f"Average sprinting step fraction per episode was {avg_sprint_step_fraction:.2f}")
-        self.metrics.add_scalar("Average sprinting step fraction", avg_sprint_step_fraction, global_it)
+        self.tensorboard.add_scalar("Average sprinting step fraction", avg_sprint_step_fraction, global_it)
+
+        self.csv_writer.writerow([global_it, avg_reward, avg_length, avg_win_rate, avg_hits_done, avg_hits_received,
+                                  avg_attack_step_fraction, avg_jump_step_fraction, avg_sprint_step_fraction])
+        self.metrics_file.flush()
 
     @staticmethod
     def compute_average_metadata_value(trajectories, key):
@@ -490,7 +505,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         nonlocal global_iteration
         global_iteration = new_global_iteration
 
-    episode_stats_aggregator = EpisodeStatsAggregator(metrics)
+    episode_stats_aggregator = EpisodeStatsAggregator(run_id, metrics)
 
     num_clients = 8
     assert num_clients % 2 == 0
