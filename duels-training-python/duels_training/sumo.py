@@ -560,7 +560,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.exists(f"artifacts/{args.id}/last_iteration.json"):
-        print("Continuing training")
+        logging.info("Continuing training")
 
         initial_model = f"artifacts/{args.id}/last_model.pt"
         initial_optimizer = f"artifacts/{args.id}/last_optimizer.pt"
@@ -572,7 +572,7 @@ def main():
         start_train_iteration = last_iteration["train_iteration"]
         log_dir = last_iteration["log_dir"]
     else:
-        print("Starting training from scratch")
+        logging.info("Starting training from scratch")
 
         initial_model = None
         initial_optimizer = None
