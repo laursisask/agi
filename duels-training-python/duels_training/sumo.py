@@ -12,7 +12,7 @@ from threading import Thread
 
 import cv2
 import torch
-from terminator import Terminator, Action
+from terminator import TerminatorSumo, Action
 from torch.utils.tensorboard import SummaryWriter
 
 from duels_training.logger import configure_logger
@@ -513,7 +513,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
     clients = []
     for port in range(6660, 6660 + num_clients):
         logging.info(f"Connecting to terminator on localhost:{port}")
-        client = Terminator()
+        client = TerminatorSumo()
         client.connect(("localhost", port))
         clients.append(client)
 
