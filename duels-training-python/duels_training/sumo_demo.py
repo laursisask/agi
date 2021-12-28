@@ -2,7 +2,7 @@ import argparse
 from threading import Thread
 
 import torch
-from terminator import Terminator
+from terminator import TerminatorSumo
 
 from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import sample_action
@@ -52,11 +52,11 @@ def play_episode(model, device, client, session):
 
 def play_agent_against_itself(model, device, num_episodes):
     print(f"Connecting to terminator on localhost:6660")
-    client1 = Terminator()
+    client1 = TerminatorSumo()
     client1.connect(("localhost", 6660))
 
     print(f"Connecting to terminator on localhost:6661")
-    client2 = Terminator()
+    client2 = TerminatorSumo()
     client2.connect(("localhost", 6661))
 
     for i in range(num_episodes):
@@ -74,7 +74,7 @@ def play_agent_against_itself(model, device, num_episodes):
 
 def play_against_player(model, device):
     print(f"Connecting to terminator on localhost:6660")
-    client = Terminator()
+    client = TerminatorSumo()
     client.connect(("localhost", 6660))
 
     while True:
