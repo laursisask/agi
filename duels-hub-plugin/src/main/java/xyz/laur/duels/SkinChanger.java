@@ -13,6 +13,7 @@ import com.comphenix.protocol.wrappers.WrappedSignedProperty;
 import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -74,7 +75,7 @@ public class SkinChanger extends PacketAdapter {
 
         player.getWorld().getPlayers()
                 .stream()
-                .filter(p -> p.canSee(player) && !p.getUniqueId().equals(player.getUniqueId()))
+                .filter(p -> p.canSee(player) && isTracked(p, player) && !p.getUniqueId().equals(player.getUniqueId()))
                 .forEach(packet::sendPacket);
     }
 
@@ -95,7 +96,7 @@ public class SkinChanger extends PacketAdapter {
 
         player.getWorld().getPlayers()
                 .stream()
-                .filter(p -> p.canSee(player) && !p.getUniqueId().equals(player.getUniqueId()))
+                .filter(p -> p.canSee(player) && isTracked(p, player) && !p.getUniqueId().equals(player.getUniqueId()))
                 .forEach(packet::sendPacket);
     }
 
@@ -137,6 +138,35 @@ public class SkinChanger extends PacketAdapter {
             Object entityPlayer = getHandle.invoke(target);
             Field pingField = entityPlayer.getClass().getField("ping");
             return (int) pingField.get(entityPlayer);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Whether a can see b
+    private boolean isTracked(Player a, Player b) {
+        Class<? extends World> worldClass = b.getWorld().getClass();
+        try {
+            Field worldServerField = worldClass.getDeclaredField("world");
+            worldServerField.setAccessible(true);
+            Object worldServer = worldServerField.get(b.getWorld());
+
+            Field trackerField = worldServer.getClass().getField("tracker");
+            Object tracker = trackerField.get(worldServer);
+
+            Field trackedEntitiesField = tracker.getClass().getField("trackedEntities");
+            Object trackedEntities = trackedEntitiesField.get(tracker);
+
+            Method getTrackerEntry = trackedEntities.getClass().getMethod("get", int.class);
+            Object trackerEntry = getTrackerEntry.invoke(trackedEntities, b.getEntityId());
+
+            Field trackedPlayersField = trackerEntry.getClass().getField("trackedPlayers");
+            Set<Object> trackedPlayers = (Set<Object>) trackedPlayersField.get(trackerEntry);
+
+            Method getPlayerHandle = a.getClass().getMethod("getHandle");
+            Object aHandle = getPlayerHandle.invoke(a);
+
+            return trackedPlayers.contains(aHandle);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
