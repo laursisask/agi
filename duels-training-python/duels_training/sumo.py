@@ -20,6 +20,7 @@ from duels_training.ppo import collect_data_and_train
 from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import compute_log_prob_dists, sample_action
 from duels_training.sumo_preprocessing import transform_raw_state
+from duels_training.sumo_maps import MAPS
 
 
 class EpisodeStatsAggregator:
@@ -128,9 +129,6 @@ class OpponentSampler:
         model_copy.to(self.device)
 
         return model_copy
-
-
-MAPS = ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
 
 
 def get_available_maps(global_iteration, add_maps_start=200, add_maps_end=600):
