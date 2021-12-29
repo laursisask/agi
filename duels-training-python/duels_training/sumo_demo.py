@@ -1,5 +1,6 @@
 import argparse
 import random
+import readline
 from threading import Thread
 
 import torch
@@ -51,6 +52,8 @@ def play_against_player(model, device, map_name):
     print(f"Connecting to terminator on localhost:6660")
     client = TerminatorSumo()
     client.connect(("localhost", 6660))
+
+    readline.set_auto_history(True)
 
     while session := input("Enter session name: "):
         play_episode(model, device, client, session, map_name)
