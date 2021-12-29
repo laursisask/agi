@@ -8,11 +8,6 @@ from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import sample_action
 from duels_training.sumo_preprocessing import transform_raw_state
 
-# mark the import as used
-# Torch looks for the imported class "SumoModel" inside the
-# current module when it loads the model from disk
-__x = SumoModel()
-
 
 class PolicyState:
     def __init__(self, model, device, observation):
@@ -91,13 +86,16 @@ def main():
 
     args = parser.parse_args()
 
+    model = SumoModel()
+
     with open(args.model, "rb") as f:
-        model = torch.load(f)
+        model.load_state_dict(torch.load(f, map_location="cpu"))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
     model.to(device)
+    model.eval()
 
     if args.interactive:
         play_against_player(model, device)
