@@ -52,8 +52,7 @@ def play_against_player(model, device, map_name):
     client = TerminatorSumo()
     client.connect(("localhost", 6660))
 
-    while True:
-        session = input("Enter session name: ")
+    while session := input("Enter session name: "):
         play_episode(model, device, client, session, map_name)
 
 
