@@ -1,5 +1,6 @@
 import argparse
 import math
+import readline
 
 import torch
 from terminator import TerminatorSumoHypixel
@@ -27,6 +28,8 @@ def play_against_player(model, device):
     print(f"Connecting to terminator on localhost:6660")
     client = TerminatorSumoHypixel()
     client.connect(("localhost", 6660))
+
+    readline.set_auto_history(True)
 
     while opponent := input("Enter opponent's name: "):
         did_win = play_episode(model, device, client, opponent)
