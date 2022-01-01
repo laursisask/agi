@@ -129,40 +129,31 @@ def test_sample_action():
     assert statistics.mean(delta_pitches) == pytest.approx(-5, abs=0.1)
 
 
-def test_opponent_sampler_copy_model():
-    device = torch.device("cuda")
-    models = [torch.nn.Sequential(torch.nn.Linear(10, 20)) for _ in range(100)]
-
-    sampler = OpponentSampler(device=device, opponent_models=models, opponent_sampling_index=0.8)
-
-    model = sampler.sample()
-    # A copy should be made
-    assert model not in models
-
-    # Model should be moved to GPU
-    assert next(model.parameters()).device.type == "cuda"
-
-
 def test_opponent_sampler():
-    device = torch.device("cuda")
-    models = [torch.nn.Sequential(torch.nn.Linear(10, 20)) for _ in range(100)]
+    class TestModel(torch.nn.Module):
+        def __init__(self, i):
+            super().__init__()
+            assert 19 <= i <= 100 or i == 420
+            self.x = torch.nn.Parameter(torch.tensor([i], dtype=torch.int32), requires_grad=False)
 
-    sampler = OpponentSampler(device=device, opponent_models=models, opponent_sampling_index=0.8)
+    last_model = TestModel(420)
+
+    sampler = OpponentSampler(
+        last_model=last_model,
+        get_global_iteration=lambda: 101,
+        load_model=TestModel,
+        opponent_sampling_index=0.8
+    )
 
     indices = []
 
     for _ in range(1000):
         model = sampler.sample()
-
-        params = next(model.parameters()).to("cpu")
-
-        matching_model = next(m for m in models if torch.allclose(next(m.parameters()), params))
-
-        index = models.index(matching_model)
+        index = model.x.item()
         # Although models from 20 should be generated, due to calculations
         # being approximate the lower bound is actually 19. This is ok in real use
         # because one model difference does not really make much difference.
-        assert 19 <= index <= 99
+        assert 19 <= index <= 100
 
         indices.append(index)
 
