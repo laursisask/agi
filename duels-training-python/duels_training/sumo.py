@@ -6,9 +6,11 @@ import json
 import logging
 import math
 import os
+import queue
 import random
 import statistics
-from threading import Thread
+from queue import Queue
+from threading import Thread, Timer
 
 import cv2
 import torch
@@ -17,10 +19,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from duels_training.logger import configure_logger
 from duels_training.ppo import collect_data_and_train
+from duels_training.sumo_maps import MAPS
 from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import compute_log_prob_dists, sample_action
 from duels_training.sumo_preprocessing import transform_raw_state
-from duels_training.sumo_maps import MAPS
 
 
 class EpisodeStatsAggregator:
@@ -111,24 +113,46 @@ class EpisodeStatsAggregator:
 
 
 class OpponentSampler:
-    def __init__(self, device, opponent_models, opponent_sampling_index):
+    def __init__(self, last_model, get_global_iteration, load_model, opponent_sampling_index):
         assert 0 < opponent_sampling_index <= 1
 
-        self.device = device
-        self.opponent_models = opponent_models
+        self.last_model = last_model
+        self.get_global_iteration = get_global_iteration
+        self.load_model = load_model
         self.opponent_sampling_index = opponent_sampling_index
+        self.prefetched_models = Queue()
+
+        self.prefetch_models()
 
     def sample(self):
-        min_index = math.floor((1 - self.opponent_sampling_index) * len(self.opponent_models))
-        max_index = len(self.opponent_models) - 1
+        num_of_models = self.get_global_iteration() - 1
 
-        index = random.randint(min_index, max_index)
-        model = self.opponent_models[index]
+        if num_of_models < 1:
+            return self.last_model
 
-        model_copy = copy.deepcopy(model)
-        model_copy.to(self.device)
+        try:
+            return self.prefetched_models.get_nowait()
+        except queue.Empty:
+            logging.warning("Loading model synchronously from disk because no prefetched model was available")
+            return self.sample_from_disk()
 
-        return model_copy
+    def prefetch_models(self):
+        num_of_models = self.get_global_iteration() - 1
+
+        while self.prefetched_models.qsize() < 50 and num_of_models > 0:
+            self.prefetched_models.put(self.sample_from_disk())
+
+        thread = Timer(function=self.prefetch_models, interval=1)
+        thread.daemon = True
+        thread.start()
+
+    def sample_from_disk(self):
+        num_of_models = self.get_global_iteration() - 1
+
+        min_index = max(math.floor((1 - self.opponent_sampling_index) * num_of_models), 1)
+
+        index = random.randint(min_index, num_of_models)
+        return self.load_model(index)
 
 
 def get_available_maps(global_iteration, add_maps_start=200, add_maps_end=600):
@@ -160,14 +184,13 @@ def get_next_map(current_map, global_iteration):
 
 
 class SumoEnv:
-    def __init__(self, run_id, device, client1, client2, opponent_models, get_global_iteration,
-                 opponent_sampling_index=1.0):
+    def __init__(self, run_id, device, client1, client2, opponent_sampler, get_global_iteration):
         self.run_id = run_id
         self.device = device
         self.client1 = client1
         self.client2 = client2
         self.get_global_iteration = get_global_iteration
-        self.opponent_sampler = OpponentSampler(device, opponent_models, opponent_sampling_index)
+        self.opponent_sampler = opponent_sampler
         self.record_episode = False
         self.recorder = None
         self.opponent_thread = None
@@ -469,25 +492,12 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
 
     model.to(device)
 
-    if start_global_iteration is None:
-        opponent_models = [model]
-    else:
-        opponent_models = []
-
-        for i in range(1, start_global_iteration):
-            opponent_model = SumoModel()
-            state_dict = torch.load(f"artifacts/{run_id}/models/{i}.pt", map_location=torch.device("cpu"))
-            opponent_model.load_state_dict(state_dict)
-
-            opponent_models.append(opponent_model)
-
     global_iteration = 1 if start_global_iteration is None else start_global_iteration
 
     def post_iteration_callback(new_global_iteration, train_iteration):
         model_copy = copy.deepcopy(model)
         model_copy.to(torch.device("cpu"))
         model_copy.eval()
-        opponent_models.append(model_copy)
 
         os.makedirs(f"artifacts/{run_id}/models", exist_ok=True)
         torch.save(model_copy.state_dict(), f"artifacts/{run_id}/models/{new_global_iteration}.pt")
@@ -505,6 +515,19 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
 
     episode_stats_aggregator = EpisodeStatsAggregator(run_id, metrics)
 
+    def load_model(index):
+        new_model = SumoModel()
+        new_model.load_state_dict(torch.load(f"artifacts/{run_id}/models/{index}.pt", map_location=torch.device("cpu")))
+        new_model.to(device)
+        return new_model
+
+    opponent_sampler = OpponentSampler(
+        last_model=model,
+        get_global_iteration=lambda: global_iteration,
+        load_model=load_model,
+        opponent_sampling_index=1.0
+    )
+
     num_clients = 8
     assert num_clients % 2 == 0
 
@@ -520,7 +543,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         device=device,
         client1=clients[i],
         client2=clients[i + 1],
-        opponent_models=opponent_models,
+        opponent_sampler=opponent_sampler,
         get_global_iteration=lambda: global_iteration
     ) for i in range(0, num_clients, 2)]
 
