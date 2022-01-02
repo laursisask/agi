@@ -13,6 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class DuelsHubPlugin extends JavaPlugin implements Listener {
     private InvisibilityManager invisibilityManager;
+    private EmblemRenderer emblemRenderer;
 
     @Override
     public void onEnable() {
@@ -36,6 +37,14 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
         getServer().getPluginManager().registerEvents(this, this);
+
+        emblemRenderer = new EmblemRenderer(this);
+        emblemRenderer.start();
+    }
+
+    @Override
+    public void onDisable() {
+        emblemRenderer.stop();
     }
 
     @EventHandler

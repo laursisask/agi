@@ -28,6 +28,10 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 127.5, 44, 93.5, -90, 0), new Location(null, 139.5, 44, 93.5, 90, 0)},
                         new Location[]{new Location(null, 133.5, 44, 99, -180, 0), new Location(null, 133.5, 44, 87.5, 0, 0)}
                 },
+                new EmblemPosition[][]{
+                        new EmblemPosition[]{new EmblemPosition(124, 49, 93, false), new EmblemPosition(142, 49, 93, false)},
+                        new EmblemPosition[]{new EmblemPosition(133, 49, 102, true), new EmblemPosition(133, 49, 84, true)}
+                },
                 41
         ),
         SPACE_MINE(
@@ -35,6 +39,10 @@ public class GameSession implements Listener {
                 new Location[][]{
                         new Location[]{new Location(null, 161.5, 144, 54.5, -90, 0), new Location(null, 173.5, 144, 54.5, 90, 0)},
                         new Location[]{new Location(null, 167.5, 144, 60.5, -180, 0), new Location(null, 167.5, 144, 48.5, 0, 0)}
+                },
+                new EmblemPosition[][]{
+                        new EmblemPosition[]{new EmblemPosition(176, 149, 54, false), new EmblemPosition(158, 149, 54, false)},
+                        new EmblemPosition[]{new EmblemPosition(167, 149, 45, true), new EmblemPosition(167, 149, 63, true)}
                 },
                 141
         ),
@@ -44,6 +52,10 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 214.5, 46, 169.5, -90, 0), new Location(null, 226.5, 46, 169.5, 90, 0)},
                         new Location[]{new Location(null, 220.5, 46, 175.5, 180, 0), new Location(null, 220.5, 46, 163.5, 0, 0)}
                 },
+                new EmblemPosition[][]{
+                        new EmblemPosition[]{new EmblemPosition(211, 51, 169, false), new EmblemPosition(229, 51, 169, false)},
+                        new EmblemPosition[]{new EmblemPosition(220, 51, 178, true), new EmblemPosition(220, 51, 160, true)}
+                },
                 43
         ),
         PONSEN(
@@ -51,6 +63,10 @@ public class GameSession implements Listener {
                 new Location[][]{
                         new Location[]{new Location(null, 216.5, 33, 29.5, -90, 0), new Location(null, 228.5, 33, 29.5, 90, 0)},
                         new Location[]{new Location(null, 222.5, 33, 35.5, 180, 0), new Location(null, 222.5, 33, 23.5, 0, 0)}
+                },
+                new EmblemPosition[][]{
+                        new EmblemPosition[]{new EmblemPosition(213, 38, 29, false), new EmblemPosition(231, 38, 29, false)},
+                        new EmblemPosition[]{new EmblemPosition(222, 38, 38, true), new EmblemPosition(222, 38, 20, true)}
                 },
                 30
         ),
@@ -60,16 +76,22 @@ public class GameSession implements Listener {
                         new Location[]{new Location(null, 119.5, 44, 12.5, 90, 0), new Location(null, 107.5, 44, 12.5, -90, 0)},
                         new Location[]{new Location(null, 113.5, 44, 6.5, 0, 0), new Location(null, 113.5, 44, 18.5, 180, 0)}
                 },
+                new EmblemPosition[][]{
+                        new EmblemPosition[]{new EmblemPosition(122, 49, 12, false), new EmblemPosition(104, 49, 12, false)},
+                        new EmblemPosition[]{new EmblemPosition(113, 49, 3, true), new EmblemPosition(113, 49, 21, true)}
+                },
                 41
         );
 
         private final String displayName;
         private final Location[][] spawnLocations;
+        private final EmblemPosition[][] emblemPositions;
         private final double minY;
 
-        GameMap(String displayName, Location[][] spawnLocations, double minY) {
+        GameMap(String displayName, Location[][] spawnLocations, EmblemPosition[][] emblemPositions, double minY) {
             this.displayName = displayName;
             this.spawnLocations = spawnLocations;
+            this.emblemPositions = emblemPositions;
             this.minY = minY;
         }
 
@@ -85,6 +107,10 @@ public class GameSession implements Listener {
 
         public String getDisplayName() {
             return displayName;
+        }
+
+        public EmblemPosition[][] getEmblemPositions() {
+            return emblemPositions;
         }
     }
 
