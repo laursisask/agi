@@ -1,14 +1,30 @@
 import argparse
 import csv
 import math
+import os.path
 import time
 
+import cv2
 import requests
 import torch
 from terminator import TerminatorSumoHypixel
 
 from duels_training.sumo_demo_utils import PolicyState
 from duels_training.sumo_model import SumoModel
+
+
+class Recorder:
+    def __init__(self, episode_index):
+        file = os.path.join("sumo_benchmark_hypixel", f"{episode_index}.mp4")
+        os.makedirs(os.path.dirname(file), exist_ok=True)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        self.video_writer = cv2.VideoWriter(file, fourcc, 20, (336, 336), True)
+
+    def record_image(self, tensor):
+        self.video_writer.write(cv2.cvtColor(cv2.flip(tensor.numpy(), 0), cv2.COLOR_RGB2BGR))
+
+    def close(self):
+        self.video_writer.release()
 
 
 def get_player_uuid(username):
@@ -37,9 +53,12 @@ def get_player_stats(username, api_key):
     return {key: all_duels_stats.get(key, 0) for key in retrieved_keys}
 
 
-def play_episode(model, device, client):
+def play_episode(model, device, client, episode_index):
     observation = client.reset(None)
     policy_state = PolicyState(model=model, device=device, observation=observation)
+
+    recorder = Recorder(episode_index)
+    recorder.record_image(observation.original_footage)
 
     start_time = time.time()
     opponent_name = None
@@ -55,10 +74,14 @@ def play_episode(model, device, client):
 
         policy_state.update(next_observation)
 
+        recorder.record_image(next_observation.original_footage)
+
     did_win = math.isclose(metadata.get("win", 0), 1)
 
     end_time = time.time()
     duration = end_time - start_time
+
+    recorder.close()
 
     return did_win, opponent_name, duration
 
@@ -88,12 +111,12 @@ def evaluate(model, device, num_episodes, api_key):
             wins = sum(1 if line == "True" else 0 for line in lines[1:])
 
     print(f"Connecting to terminator on localhost:6660")
-    client = TerminatorSumoHypixel()
+    client = TerminatorSumoHypixel(capture_original_footage=True)
     client.connect(("localhost", 7000))
 
     for i in range(first_episode, num_episodes):
         print(f"Starting episode {i}")
-        did_win, opponent_name, duration = play_episode(model, device, client)
+        did_win, opponent_name, duration = play_episode(model, device, client, i)
 
         if did_win:
             wins += 1
