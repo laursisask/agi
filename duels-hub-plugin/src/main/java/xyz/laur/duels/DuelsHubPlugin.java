@@ -41,6 +41,7 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
 
         showPlayerHealth();
+        createTeam();
 
         emblemRenderer = new EmblemRenderer(this);
         emblemRenderer.start();
@@ -71,6 +72,9 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         invisibilityManager.update();
+
+        Team team = getServer().getScoreboardManager().getMainScoreboard().getTeam("all");
+        team.addEntry(event.getPlayer().getName());
     }
 
     @EventHandler
@@ -92,5 +96,18 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         Objective objective = scoreboard.registerNewObjective("showhealth", Criterias.HEALTH);
         objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         objective.setDisplayName(ChatColor.RED + "❤");
+    }
+
+    private void createTeam() {
+        ScoreboardManager sm = getServer().getScoreboardManager();
+        Scoreboard scoreboard = sm.getMainScoreboard();
+
+        Team existingTeam = scoreboard.getTeam("all");
+        if (existingTeam != null) {
+            existingTeam.unregister();
+        }
+
+        Team team = scoreboard.registerNewTeam("all");
+        team.setPrefix(ChatColor.RED.toString());
     }
 }
