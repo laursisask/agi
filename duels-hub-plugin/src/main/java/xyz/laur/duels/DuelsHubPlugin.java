@@ -1,6 +1,7 @@
 package xyz.laur.duels;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -10,6 +11,7 @@ import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.*;
 
 public class DuelsHubPlugin extends JavaPlugin implements Listener {
     private InvisibilityManager invisibilityManager;
@@ -37,6 +39,8 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
         getServer().getPluginManager().registerEvents(this, this);
+
+        showPlayerHealth();
 
         emblemRenderer = new EmblemRenderer(this);
         emblemRenderer.start();
@@ -74,5 +78,13 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         if (event.toWeatherState()) {
             event.setCancelled(true);
         }
+    }
+
+    private void showPlayerHealth() {
+        ScoreboardManager sm = getServer().getScoreboardManager();
+        Scoreboard scoreboard = sm.getMainScoreboard();
+        Objective objective = scoreboard.registerNewObjective("showhealth", Criterias.HEALTH);
+        objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
+        objective.setDisplayName(ChatColor.RED + "❤");
     }
 }
