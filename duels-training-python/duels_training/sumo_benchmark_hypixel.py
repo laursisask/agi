@@ -61,6 +61,7 @@ def play_episode(model, device, client, episode_index):
     recorder.record_image(observation.original_footage)
 
     start_time = time.time()
+    map_name = None
     opponent_name = None
     metadata = {}
     done = False
@@ -71,6 +72,10 @@ def play_episode(model, device, client, episode_index):
         if "opponent_name" in metadata:
             opponent_name = metadata["opponent_name"]
             print(f"Playing against {opponent_name}")
+
+        if "map_name" in metadata:
+            map_name = metadata["map_name"]
+            print(f"Map: {map_name}")
 
         policy_state.update(next_observation)
 
@@ -83,7 +88,7 @@ def play_episode(model, device, client, episode_index):
 
     recorder.close()
 
-    return did_win, opponent_name, duration
+    return did_win, map_name, opponent_name, duration
 
 
 def evaluate(model, device, num_episodes, api_key):
@@ -96,8 +101,9 @@ def evaluate(model, device, num_episodes, api_key):
     wins = 0
 
     if file.tell() == 0:
-        csv_writer.writerow(["episode", "did_win", "duration", "opponent_name", "opponent_current_winstreak",
-                             "opponent_rounds_played", "opponent_sumo_duel_wins", "opponent_sumo_duel_rounds_played"])
+        csv_writer.writerow(["episode", "did_win", "duration", "map_name", "opponent_name",
+                             "opponent_current_winstreak", "opponent_rounds_played", "opponent_sumo_duel_wins",
+                             "opponent_sumo_duel_rounds_played"])
     else:
         print("Benchmark file already exists")
         with open(filename, "r") as file_for_read:
@@ -116,7 +122,7 @@ def evaluate(model, device, num_episodes, api_key):
 
     for i in range(first_episode, num_episodes):
         print(f"Starting episode {i}")
-        did_win, opponent_name, duration = play_episode(model, device, client, i)
+        did_win, map_name, opponent_name, duration = play_episode(model, device, client, i)
 
         if did_win:
             wins += 1
@@ -130,8 +136,8 @@ def evaluate(model, device, num_episodes, api_key):
               f"sumo wins {stats['sumo_duel_wins']}")
         print("----------")
 
-        csv_writer.writerow([i, did_win, duration, opponent_name, stats['current_winstreak'], stats['rounds_played'],
-                             stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
+        csv_writer.writerow([i, did_win, duration, map_name, opponent_name, stats['current_winstreak'],
+                             stats['rounds_played'], stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
         file.flush()
 
     print("Evaluation finished")
