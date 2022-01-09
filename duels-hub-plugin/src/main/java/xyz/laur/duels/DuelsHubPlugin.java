@@ -83,6 +83,12 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
     private void showPlayerHealth() {
         ScoreboardManager sm = getServer().getScoreboardManager();
         Scoreboard scoreboard = sm.getMainScoreboard();
+
+        Objective existingObjective = scoreboard.getObjective("showhealth");
+        if (existingObjective != null) {
+            existingObjective.unregister();
+        }
+
         Objective objective = scoreboard.registerNewObjective("showhealth", Criterias.HEALTH);
         objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         objective.setDisplayName(ChatColor.RED + "❤");
