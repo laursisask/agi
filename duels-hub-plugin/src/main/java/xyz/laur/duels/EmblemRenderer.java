@@ -125,7 +125,7 @@ public class EmblemRenderer {
     }
 
     private static Schematic pickEmblem() {
-        if (random.nextDouble() < 0.2) {
+        if (random.nextDouble() < 0.4) {
             return EMBLEMS[random.nextInt(EMBLEMS.length)];
         } else {
             return null;
