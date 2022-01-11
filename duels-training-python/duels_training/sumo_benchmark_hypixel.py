@@ -122,7 +122,7 @@ def evaluate(model, device, num_episodes, api_key):
 
     print(f"Connecting to terminator on localhost:6660")
     client = TerminatorSumoHypixel(capture_original_footage=True)
-    client.connect(("localhost", 7000))
+    client.connect(("localhost", 6660))
 
     for i in range(first_episode, num_episodes):
         print(f"Starting episode {i}")
