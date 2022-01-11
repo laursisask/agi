@@ -31,14 +31,18 @@ def get_player_uuid(username):
     response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{username}")
     response.raise_for_status()
 
-    # When player does not exist, 204 is returned and not error status code
-    assert response.status_code == 200
-
-    return response.json()["id"]
+    # When player does not exist, 204 is returned
+    if response.status_code == 200:
+        return response.json()["id"]
+    else:
+        return None
 
 
 def get_player_stats(username, api_key):
     player_uuid = get_player_uuid(username)
+
+    if player_uuid is None:
+        return None
 
     response = requests.get("https://api.hypixel.net/player", params={"uuid": player_uuid},
                             headers={"API-Key": api_key})
@@ -131,14 +135,18 @@ def evaluate(model, device, num_episodes, api_key):
             print("Agent lost the game")
 
         stats = get_player_stats(opponent_name, api_key)
-        print(f"{opponent_name}'s stats: general duels winstreak {stats['current_winstreak']}, "
-              f"duels rounds played {stats['rounds_played']}, sumo rounds played {stats['sumo_duel_rounds_played']}, "
-              f"sumo wins {stats['sumo_duel_wins']}")
-        print("----------")
+        if stats is None:
+            print(f"Could not find player {opponent_name}")
+            i -= 1
+        else:
+            print(f"{opponent_name}'s stats: general duels winstreak {stats['current_winstreak']}, "
+                  f"duels rounds played {stats['rounds_played']}, sumo rounds played {stats['sumo_duel_rounds_played']}, "
+                  f"sumo wins {stats['sumo_duel_wins']}")
+            print("----------")
 
-        csv_writer.writerow([i, did_win, duration, map_name, opponent_name, stats['current_winstreak'],
-                             stats['rounds_played'], stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
-        file.flush()
+            csv_writer.writerow([i, did_win, duration, map_name, opponent_name, stats['current_winstreak'],
+                                 stats['rounds_played'], stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
+            file.flush()
 
     print("Evaluation finished")
     print(f"Win rate: {wins / num_episodes:.3f}")
