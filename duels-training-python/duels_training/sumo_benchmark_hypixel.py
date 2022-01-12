@@ -157,11 +157,11 @@ def evaluate(model, device, num_episodes, api_key):
             print(f"{opponent_name}'s stats: general duels winstreak {stats['current_winstreak']}, "
                   f"duels rounds played {stats['rounds_played']}, sumo rounds played {stats['sumo_duel_rounds_played']}, "
                   f"sumo wins {stats['sumo_duel_wins']}")
-            print("----------")
 
             csv_writer.writerow([i, result, duration, map_name, opponent_name, stats['current_winstreak'],
                                  stats['rounds_played'], stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
             file.flush()
+        print("----------")
 
     print("Evaluation finished")
     print(f"Win rate: {wins / num_episodes:.3f}")
