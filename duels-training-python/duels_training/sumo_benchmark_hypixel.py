@@ -1,6 +1,5 @@
 import argparse
 import csv
-import math
 import os.path
 import time
 
@@ -85,14 +84,14 @@ def play_episode(model, device, client, episode_index):
 
         recorder.record_image(next_observation.original_footage)
 
-    did_win = math.isclose(metadata.get("win", 0), 1)
+    result = metadata["result"]
 
     end_time = time.time()
     duration = end_time - start_time
 
     recorder.close()
 
-    return did_win, map_name, opponent_name, duration
+    return result, map_name, opponent_name, duration
 
 
 def evaluate(model, device, num_episodes, api_key):
@@ -105,7 +104,7 @@ def evaluate(model, device, num_episodes, api_key):
     wins = 0
 
     if file.tell() == 0:
-        csv_writer.writerow(["episode", "did_win", "duration", "map_name", "opponent_name",
+        csv_writer.writerow(["episode", "result", "duration", "map_name", "opponent_name",
                              "opponent_current_winstreak", "opponent_rounds_played", "opponent_sumo_duel_wins",
                              "opponent_sumo_duel_rounds_played"])
     else:
@@ -126,13 +125,17 @@ def evaluate(model, device, num_episodes, api_key):
 
     for i in range(first_episode, num_episodes):
         print(f"Starting episode {i}")
-        did_win, map_name, opponent_name, duration = play_episode(model, device, client, i)
+        result, map_name, opponent_name, duration = play_episode(model, device, client, i)
 
-        if did_win:
+        if result == "victory":
             wins += 1
             print("Agent won the game")
-        else:
+        elif result == "defeat":
             print("Agent lost the game")
+        elif result == "draw":
+            print("Game ended in a draw")
+        else:
+            raise ValueError(f"Unknown result {result}")
 
         stats = get_player_stats(opponent_name, api_key)
         if stats is None:
@@ -144,7 +147,7 @@ def evaluate(model, device, num_episodes, api_key):
                   f"sumo wins {stats['sumo_duel_wins']}")
             print("----------")
 
-            csv_writer.writerow([i, did_win, duration, map_name, opponent_name, stats['current_winstreak'],
+            csv_writer.writerow([i, result, duration, map_name, opponent_name, stats['current_winstreak'],
                                  stats['rounds_played'], stats['sumo_duel_wins'], stats['sumo_duel_rounds_played']])
             file.flush()
 
