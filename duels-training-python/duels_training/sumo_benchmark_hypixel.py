@@ -37,6 +37,18 @@ def get_player_uuid(username):
         return None
 
 
+def dig(dictionary, keys, default=None):
+    value = dictionary
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return default
+
+    return value
+
+
 def get_player_stats(username, api_key):
     player_uuid = get_player_uuid(username)
 
@@ -49,11 +61,11 @@ def get_player_stats(username, api_key):
 
     retrieved_keys = ["current_winstreak", "rounds_played", "sumo_duel_wins", "sumo_duel_rounds_played"]
 
-    all_duels_stats = response.json()["player"]["stats"]["Duels"]
+    all_stats = response.json()
 
     # Not all keys are always present. For example, when player has not
     # won a single game in sumo.
-    return {key: all_duels_stats.get(key, 0) for key in retrieved_keys}
+    return {key: dig(all_stats, ["player", "stats", "Duels", key], 0) for key in retrieved_keys}
 
 
 def play_episode(model, device, client, episode_index):
