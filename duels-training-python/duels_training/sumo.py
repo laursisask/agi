@@ -265,8 +265,17 @@ class SumoEnv:
         return exploration_coefficient * (metadata.get("hits_done", 0) - metadata.get("hits_received", 0))
 
     def calculate_attack_reward(self, action):
-        if self.get_global_iteration() > 700 and action.attacking:
-            return -0.1
+        if not action.attacking:
+            return 0
+
+        increase_start = 1000
+        increase_end = 2000
+        decrease_end = 3000
+
+        if increase_start < self.get_global_iteration() < increase_end:
+            return -0.05 * (increase_end - self.get_global_iteration()) / (increase_end - increase_start)
+        elif increase_end <= self.get_global_iteration() < decrease_end:
+            return -0.05 * (decrease_end - self.get_global_iteration()) / (decrease_end - increase_end)
         else:
             return 0
 
