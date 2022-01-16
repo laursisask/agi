@@ -525,7 +525,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         last_model=model,
         get_global_iteration=lambda: global_iteration,
         load_model=load_model,
-        opponent_sampling_index=1.0
+        opponent_sampling_index=0.5
     )
 
     num_clients = 8
