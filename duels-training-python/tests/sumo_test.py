@@ -175,9 +175,3 @@ def test_get_available_maps():
     assert get_available_maps(601) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
     assert get_available_maps(700) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
     assert get_available_maps(1200) == ["white_crystal", "classic_sumo", "space_mine", "ponsen", "fort_royale"]
-
-
-def test_get_next_map():
-    results = [get_next_map("classic_sumo", global_iteration=420) for _ in range(100)]
-
-    assert results.count("classic_sumo") == pytest.approx(93, abs=5)

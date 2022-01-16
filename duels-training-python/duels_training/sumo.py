@@ -170,38 +170,35 @@ def get_available_maps(global_iteration, add_maps_start=200, add_maps_end=600):
     return available_maps
 
 
-def get_next_map(current_map, global_iteration):
-    available_maps = get_available_maps(global_iteration)
-
-    avg_episodes_per_iteration = 50
-    episodes_per_map = avg_episodes_per_iteration / len(available_maps)
-    change_map_prob = 1 / episodes_per_map
-
-    if current_map is None or random.random() < change_map_prob:
-        return random.choice(available_maps)
-    else:
-        return current_map
-
-
 class SumoEnv:
-    def __init__(self, run_id, device, client1, client2, opponent_sampler, get_global_iteration):
+    def __init__(self, run_id, device, client1, client2, opponent_sampler, get_global_iteration,
+                 get_last_num_of_episodes):
         self.run_id = run_id
         self.device = device
         self.client1 = client1
         self.client2 = client2
         self.get_global_iteration = get_global_iteration
         self.opponent_sampler = opponent_sampler
+        self.get_last_num_of_episodes = get_last_num_of_episodes
         self.record_episode = False
         self.recorder = None
         self.opponent_thread = None
         self.current_map = None
+        self.map_episode_counter = 0
 
     def reset(self):
         if self.record_episode and self.recorder.isOpened():
             self.recorder.release()
 
         self.record_episode = random.random() < 0.002
-        self.current_map = get_next_map(self.current_map, self.get_global_iteration())
+
+        available_maps = get_available_maps(self.get_global_iteration())
+        episodes_per_map = self.get_last_num_of_episodes() / len(available_maps)
+        if self.current_map is None or self.map_episode_counter >= episodes_per_map:
+            self.current_map = random.choice(available_maps)
+            self.map_episode_counter = 0
+
+        self.map_episode_counter += 1
 
         session = self.client1.create_session()
 
@@ -537,6 +534,14 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         opponent_sampling_index=0.5
     )
 
+    last_num_of_episodes = 50
+
+    def post_data_collect_callback(global_it, trajectories):
+        episode_stats_aggregator(global_it, trajectories)
+
+        nonlocal last_num_of_episodes
+        last_num_of_episodes = len(trajectories)
+
     num_clients = 8
     assert num_clients % 2 == 0
 
@@ -553,7 +558,8 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         client1=clients[i],
         client2=clients[i + 1],
         opponent_sampler=opponent_sampler,
-        get_global_iteration=lambda: global_iteration
+        get_global_iteration=lambda: global_iteration,
+        get_last_num_of_episodes=lambda: last_num_of_episodes
     ) for i in range(0, num_clients, 2)]
 
     collect_data_and_train(
@@ -574,7 +580,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         value_coefficient=1.0,
         entropy_coefficient=0.01,
         post_iteration_callback=post_iteration_callback,
-        post_data_collect_callback=episode_stats_aggregator,
+        post_data_collect_callback=post_data_collect_callback,
         start_global_iteration=1 if start_global_iteration is None else start_global_iteration,
         start_train_iteration=0 if start_train_iteration is None else start_train_iteration,
         assets_dir=f"artifacts/{run_id}"
