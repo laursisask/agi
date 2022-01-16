@@ -200,7 +200,7 @@ class SumoEnv:
         if self.record_episode and self.recorder.isOpened():
             self.recorder.release()
 
-        self.record_episode = random.random() < 0.01
+        self.record_episode = random.random() < 0.002
         self.current_map = get_next_map(self.current_map, self.get_global_iteration())
 
         session = self.client1.create_session()
