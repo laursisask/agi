@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
+from duels_training.incremental_stats_calculator import IncrementalStatsCalculator
+
 
 @dataclass
 class Trajectory:
@@ -116,7 +118,7 @@ def compute_n_step_returns(value_estimates: torch.Tensor, rewards: List[List[flo
 
 
 @torch.no_grad()
-def create_dataset(device, critic, trajectories, bootstrap_length, batch_size=64, steps_per_call=32):
+def create_dataset(device, critic, trajectories, bootstrap_length, reward_stats, batch_size=64, steps_per_call=32):
     trajectories = sorted(trajectories, key=len)
 
     def collate_fn(batch):
@@ -141,14 +143,17 @@ def create_dataset(device, critic, trajectories, bootstrap_length, batch_size=64
             steps_per_call=steps_per_call
         )
 
-        returns = compute_n_step_returns(value_estimates, rewards, bootstrap_length)
+        reward_std = reward_stats.std() + 1e-7
+        normalized_rewards = [[reward / reward_std for reward in trajectory_rewards] for trajectory_rewards in rewards]
+
+        returns = compute_n_step_returns(value_estimates, normalized_rewards, bootstrap_length)
 
         advantages = returns - value_estimates
 
         for t_observations, t_actions, t_rewards, t_returns, t_advantages in zip(
                 observations,
                 actions,
-                rewards,
+                normalized_rewards,
                 returns,
                 advantages
         ):
@@ -398,7 +403,7 @@ def run_episodes_parallel(policy, envs, num_steps, min_episodes):
 def collect_data_and_train_iteration(device, policy, envs, model, optimizer, metrics, steps_per_iteration,
                                      train_it, global_it, critic, bootstrap_length, num_epochs, batch_size,
                                      backpropagation_steps, clip_range, max_grad_norm, value_coefficient,
-                                     entropy_coefficient, assets_dir, callback_fn):
+                                     entropy_coefficient, assets_dir, callback_fn, reward_stats):
     trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, batch_size)
 
     logging.info("Data collection phase finished")
@@ -406,7 +411,9 @@ def collect_data_and_train_iteration(device, policy, envs, model, optimizer, met
     if callback_fn is not None:
         callback_fn(global_it, trajectories)
 
-    dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length)
+    [reward_stats.append(reward) for trajectory in trajectories for reward in trajectory.rewards]
+
+    dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length, reward_stats=reward_stats)
     del trajectories
 
     train_it = train(
@@ -461,6 +468,8 @@ def collect_data_and_train(
 
     train_it = start_train_iteration
 
+    reward_stats = IncrementalStatsCalculator()
+
     for i in range(start_global_iteration, iterations + 1):
         logging.info(f"Starting iteration {i}")
         start_time = time.time()
@@ -485,7 +494,8 @@ def collect_data_and_train(
             value_coefficient=value_coefficient,
             entropy_coefficient=entropy_coefficient,
             assets_dir=assets_dir,
-            callback_fn=post_data_collect_callback
+            callback_fn=post_data_collect_callback,
+            reward_stats=reward_stats
         )
 
         end_time = time.time()
@@ -494,6 +504,8 @@ def collect_data_and_train(
 
         if post_iteration_callback is not None:
             post_iteration_callback(i, train_it)
+
+        metrics.add_scalar("Standard deviation of reward", reward_stats.std(), i)
 
     logging.info("Training finished")
     logging.info("Evaluating best model")

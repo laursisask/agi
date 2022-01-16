@@ -96,7 +96,14 @@ def test_create_dataset_single_trajectory():
         assert x.shape == (1, 3, 8)
         critic_calls.append((x, initial_state))
 
-        return torch.full([x.size(0), x.size(1)], 2.0), torch.randn([x.size(0), x.size(1)])
+        return torch.full([x.size(0), x.size(1)], 0.2), torch.randn([x.size(0), x.size(1)])
+
+    class MockRewardStats:
+        def __init__(self):
+            self.n = 50
+
+        def std(self):
+            return 10.0
 
     trajectories = [
         Trajectory(
@@ -111,6 +118,7 @@ def test_create_dataset_single_trajectory():
         device=device,
         critic=critic_fn,
         trajectories=trajectories,
+        reward_stats=MockRewardStats(),
         batch_size=13,
         bootstrap_length=2,
         steps_per_call=3
@@ -124,8 +132,8 @@ def test_create_dataset_single_trajectory():
         assert torch.equal(observations_list[i], observations[i])
         assert torch.equal(actions_list[i], actions[i])
 
-    assert torch.equal(returns, torch.tensor([7, -1, -2, 3, 9, 9], dtype=torch.float32))
-    assert torch.equal(advantages, torch.tensor([5, -3, -4, 1, 7, 7], dtype=torch.float32))
+    assert torch.allclose(returns, torch.tensor([0.7, -0.1, -0.2, 0.3, 0.9, 0.9], dtype=torch.float32))
+    assert torch.allclose(advantages, torch.tensor([0.5, -0.3, -0.4, 0.1, 0.7, 0.7], dtype=torch.float32))
 
     assert len(critic_calls) == 2
 
@@ -154,6 +162,13 @@ def test_create_dataset_gridworld():
         def get_initial_state(self, observation):
             return PolicyState()
 
+    class MockRewardStats:
+        def __init__(self):
+            self.n = 50
+
+        def std(self):
+            return 1.0
+
     data_collector = DataCollector(policy=Policy(), env=Gridworld(size=8))
 
     trajectories = [data_collector.run_episode() for _ in range(137)]
@@ -162,6 +177,7 @@ def test_create_dataset_gridworld():
         device=device,
         critic=critic_fn,
         trajectories=trajectories,
+        reward_stats=MockRewardStats(),
         batch_size=13,
         bootstrap_length=2,
         steps_per_call=3
@@ -185,17 +201,17 @@ def test_create_dataset_gridworld():
         assert torch.equal(torch.stack(original_trajectory.observations), observations)
         assert torch.equal(torch.stack(original_trajectory.actions), actions)
 
-        assert returns[-1] == 10.0
-        assert returns[-2] == 9.0
+        assert returns[-1].item() == pytest.approx(10.0)
+        assert returns[-2].item() == pytest.approx(9.0)
 
         for i in range(length - 2):
-            assert returns[i] == -1.9
+            assert returns[i].item() == pytest.approx(-1.9)
 
-        assert advantages[-1] == 9.9
-        assert advantages[-2] == 8.9
+        assert advantages[-1].item() == pytest.approx(9.9)
+        assert advantages[-2].item() == pytest.approx(8.9)
 
         for i in range(length - 2):
-            assert advantages[i] == -2
+            assert advantages[i].item() == pytest.approx(-2)
 
 
 def test_train_on_batch():
