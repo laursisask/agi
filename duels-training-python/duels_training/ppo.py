@@ -446,6 +446,7 @@ def collect_data_and_train(
         model,
         optimizer,
         metrics,
+        reward_stats,
         iterations=1000,
         steps_per_iteration=4096,
         bootstrap_length=5,
@@ -467,8 +468,6 @@ def collect_data_and_train(
         return values, final_state
 
     train_it = start_train_iteration
-
-    reward_stats = IncrementalStatsCalculator()
 
     for i in range(start_global_iteration, iterations + 1):
         logging.info(f"Starting iteration {i}")

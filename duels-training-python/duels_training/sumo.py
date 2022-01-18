@@ -17,6 +17,7 @@ import torch
 from terminator import TerminatorSumo, Action
 from torch.utils.tensorboard import SummaryWriter
 
+from duels_training.incremental_stats_calculator import IncrementalStatsCalculator
 from duels_training.logger import configure_logger
 from duels_training.ppo import collect_data_and_train
 from duels_training.sumo_maps import MAPS
@@ -468,7 +469,8 @@ class Policy:
         return compute_entropies(policy_dists)
 
 
-def train(initial_model, initial_optimizer, start_global_iteration, start_train_iteration, log_dir, run_id):
+def train(initial_model, initial_optimizer, initial_reward_stats, start_global_iteration, start_train_iteration,
+          log_dir, run_id):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using {device} device")
 
@@ -498,6 +500,12 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
 
     model.to(device)
 
+    reward_stats = IncrementalStatsCalculator()
+    if initial_reward_stats is not None:
+        logging.info(f"Loading reward stats from {initial_reward_stats}")
+        with open(initial_reward_stats, "r") as f:
+            reward_stats.load(f)
+
     global_iteration = 1 if start_global_iteration is None else start_global_iteration
 
     def post_iteration_callback(new_global_iteration, train_iteration):
@@ -515,6 +523,9 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
                 "log_dir": log_dir
             }
             json.dump(last_iteration, file)
+
+        with open(f"artifacts/{run_id}/reward_stats.json", "w") as f:
+            reward_stats.dump(f)
 
         nonlocal global_iteration
         global_iteration = new_global_iteration
@@ -569,6 +580,7 @@ def train(initial_model, initial_optimizer, start_global_iteration, start_train_
         model=model,
         optimizer=optimizer,
         metrics=metrics,
+        reward_stats=reward_stats,
         iterations=50000,
         steps_per_iteration=65536,
         bootstrap_length=5,
@@ -600,6 +612,7 @@ def main():
 
         initial_model = f"artifacts/{args.id}/last_model.pt"
         initial_optimizer = f"artifacts/{args.id}/last_optimizer.pt"
+        initial_reward_stats = f"artifacts/{args.id}/reward_stats.json"
 
         with open(f"artifacts/{args.id}/last_iteration.json", "r") as file:
             last_iteration = json.load(file)
@@ -612,6 +625,7 @@ def main():
 
         initial_model = None
         initial_optimizer = None
+        initial_reward_stats = None
         start_global_iteration = None
         start_train_iteration = None
         log_dir = None
@@ -619,6 +633,7 @@ def main():
     train(
         initial_model,
         initial_optimizer,
+        initial_reward_stats,
         start_global_iteration,
         start_train_iteration,
         log_dir,
