@@ -5,6 +5,7 @@ import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from duels_training.incremental_stats_calculator import IncrementalStatsCalculator
 from duels_training.ppo import DataCollector, Trajectory, create_dataset, train_on_batch, collect_data_and_train
 from tests.gridworld import Gridworld, GridworldPolicy, GridworldModel
 from tests.models import RecurrentModel, PolicyForRecurrentModel
@@ -316,6 +317,7 @@ def test_collect_data_and_train(tmp_path):
         envs=envs,
         optimizer=optimizer,
         metrics=SummaryWriter(log_dir=tmp_path),
+        reward_stats=IncrementalStatsCalculator(),
         iterations=14,
         steps_per_iteration=4096,
         batch_size=8,
