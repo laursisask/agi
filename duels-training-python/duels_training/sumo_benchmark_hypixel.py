@@ -173,7 +173,7 @@ def evaluate(model, device, num_episodes, api_key):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
-    parser.add_argument("--num-episodes", default=100)
+    parser.add_argument("--num-episodes", default=100, type=int)
     parser.add_argument("--api-key", required=True)
 
     args = parser.parse_args()
