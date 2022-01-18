@@ -389,7 +389,7 @@ def run_episodes_parallel(policy, envs, num_steps, min_episodes):
 
     threads = []
     for env in envs:
-        thread = Thread(target=run_episodes, args=(env,))
+        thread = Thread(target=run_episodes, args=(env,), daemon=True)
         threads.append(thread)
         thread.start()
 
