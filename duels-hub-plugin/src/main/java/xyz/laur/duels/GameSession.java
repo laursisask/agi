@@ -117,6 +117,7 @@ public class GameSession implements Listener {
     private State state = State.WAITING_FOR_PLAYERS;
     private final List<Player> players = new ArrayList<>();
     private final GameMap map;
+    private final boolean randomTeleport;
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
@@ -124,13 +125,17 @@ public class GameSession implements Listener {
     private final Location[] spawnLocations;
     private static final Random random = new Random();
 
+    private int randomTeleportTask;
+
     public GameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                       SkinChanger skinChanger, Plugin plugin, float randomizationFactor, GameMap map) {
+                       SkinChanger skinChanger, Plugin plugin, float randomizationFactor, GameMap map,
+                       boolean randomTeleport) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.map = map;
+        this.randomTeleport = randomTeleport;
 
         int spawnLocPair = pickSpawnLocationPair(randomizationFactor);
 
@@ -156,6 +161,10 @@ public class GameSession implements Listener {
 
     public GameMap getMap() {
         return map;
+    }
+
+    public boolean hasRandomTeleport() {
+        return randomTeleport;
     }
 
     public List<Player> getPlayers() {
@@ -194,6 +203,11 @@ public class GameSession implements Listener {
             player.getInventory().clear();
         }
 
+        if (randomTeleport) {
+            randomTeleportTask = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
+                    this::randomTeleportTick, 40, 1);
+        }
+
         state = State.PLAYING;
     }
 
@@ -220,6 +234,10 @@ public class GameSession implements Listener {
 
         sessionManager.removeSession(this);
         invisibilityManager.update();
+
+        if (randomTeleport) {
+            plugin.getServer().getScheduler().cancelTask(randomTeleportTask);
+        }
     }
 
     public boolean hasPlayer(Player player) {
@@ -234,6 +252,28 @@ public class GameSession implements Listener {
         }
 
         return 0;
+    }
+
+    protected void randomTeleportTick() {
+        if (state != State.PLAYING) {
+            throw new IllegalStateException("Game was not in playing state but random teleport tick was called");
+        }
+
+        if (!randomTeleport) {
+            throw new IllegalStateException("Game did not have random teleport in but random teleport tick was called");
+        }
+
+        Player player = randomPlayer();
+
+        double distanceBetweenPlayers = player.getLocation().distance(getOtherPlayer(player).getLocation());
+        if (distanceBetweenPlayers < 3 && random.nextDouble() < 1D / 100) {
+            plugin.getLogger().info("Randomly teleporting one player");
+            Location newLocation = player.getLocation().clone();
+            newLocation.add(4 * (random.nextDouble() - 0.5), 0, 4 * (random.nextDouble() - 0.5));
+            newLocation.setPitch(newLocation.getPitch() + (random.nextFloat() - 0.5F) * 30);
+            newLocation.setYaw(newLocation.getYaw() + (random.nextFloat() - 0.5F) * 30);
+            player.teleport(newLocation);
+        }
     }
 
     @EventHandler
@@ -272,6 +312,10 @@ public class GameSession implements Listener {
             sendMetadata(attacker, "hits_done", 1);
             sendMetadata(target, "hits_received", 1);
         }
+    }
+
+    private Player randomPlayer() {
+        return players.get(random.nextInt(players.size()));
     }
 
     protected void sendMetadata(Player player, String key, double value) {

@@ -51,16 +51,17 @@ public class JoinCommandTest {
         when(sender1.getInventory()).thenReturn(inventory);
 
         assertTrue(command.onCommand(sender1, null, "join",
-                new String[]{"abc123", "0.334", "fort_royale"}));
+                new String[]{"abc123", "0.334", "fort_royale", "true"}));
         GameSession session = sessionManager.getByName("abc123");
         assertTrue(session.hasPlayer(sender1));
         assertEquals(FORT_ROYALE, session.getMap());
+        assertTrue(session.hasRandomTeleport());
 
         Player sender2 = mock(Player.class);
         when(sender2.getInventory()).thenReturn(inventory);
 
         assertTrue(command.onCommand(sender2, null, "join",
-                new String[]{"abc123", "0.334", "fort_royale"}));
+                new String[]{"abc123", "0.334", "fort_royale", "true"}));
         assertTrue(session.hasPlayer(sender2));
     }
 }

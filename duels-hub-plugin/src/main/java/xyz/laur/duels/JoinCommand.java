@@ -31,21 +31,21 @@ public class JoinCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length != 3) {
+        if (args.length != 4) {
             return false;
         }
 
         String sessionName = args[0];
         float randomizationFactor = Float.parseFloat(args[1]);
-
         GameSession.GameMap map = GameSession.GameMap.fromName(args[2]);
+        boolean randomTeleport = Boolean.parseBoolean(args[3]);
 
         GameSession session = sessionManager.getByName(sessionName);
 
         if (session == null) {
             plugin.getLogger().info("Creating new session");
             session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
-                    randomizationFactor, map);
+                    randomizationFactor, map, randomTeleport);
             sessionManager.addSession(sessionName, session);
         }
 
