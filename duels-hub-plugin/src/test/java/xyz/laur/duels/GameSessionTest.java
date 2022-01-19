@@ -1,5 +1,6 @@
 package xyz.laur.duels;
 
+import com.sun.org.apache.xpath.internal.Arg;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -17,8 +18,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.util.logging.Logger;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,7 +47,8 @@ public class GameSessionTest {
 
         SkinChanger skinChanger = mock(SkinChanger.class);
 
-        session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, 0F, GameSession.GameMap.PONSEN);
+        session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, 0F,
+                GameSession.GameMap.PONSEN, true);
     }
 
     @Test
@@ -153,6 +154,39 @@ public class GameSessionTest {
 
         verify(player1, times(1)).sendMessage("metadata:hits_done:1.00000");
         verify(player2, times(1)).sendMessage("metadata:hits_received:1.00000");
+    }
+
+    @Test
+    public void testRandomTeleport() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        assertEquals(GameSession.State.PLAYING, session.getState());
+
+        verify(player1, atLeast(1)).teleport(any(Location.class));
+        verify(player2, atLeast(1)).teleport(any(Location.class));
+
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler, times(1)).scheduleSyncRepeatingTask(any(), task.capture(), eq(40L), eq(1L));
+
+        when(player1.getLocation()).thenReturn(new Location(world, 220, 33, 25));
+        when(player2.getLocation()).thenReturn(new Location(world, 222, 33.5, 24));
+
+        ArgumentCaptor<Location> teleportLocs1 = ArgumentCaptor.forClass(Location.class);
+        ArgumentCaptor<Location> teleportLocs2 = ArgumentCaptor.forClass(Location.class);
+
+        verify(player1, atLeast(1)).teleport(teleportLocs1.capture());
+        verify(player2, atLeast(1)).teleport(teleportLocs2.capture());
+
+        for (int i = 0; i < 2000; i++) {
+            task.getValue().run();
+        }
+
+        verify(player1, atLeast(2)).teleport(any(Location.class));
+        verify(player2, atLeast(2)).teleport(any(Location.class));
     }
 
     protected Player createMockPlayer() {

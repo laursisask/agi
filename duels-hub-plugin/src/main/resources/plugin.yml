@@ -5,7 +5,7 @@ depend: [ProtocolLib]
 commands:
   join:
     description: Joins a game session
-    usage: /join <session ID> <randomization factor> <map name>
+    usage: /join <session ID> <randomization factor> <map name> <random teleport>
   games:
     description: Lists all ongoing games
     usage: /games
