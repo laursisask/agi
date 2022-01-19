@@ -15,7 +15,7 @@ def play_episode(model, device, client, session, map_name):
     if map_name is None:
         map_name = random.choice(MAPS)
 
-    observation = client.reset(session=session, randomization_factor=1, map_name=map_name)
+    observation = client.reset(session=session, randomization_factor=1, map_name=map_name, random_teleport=False)
     policy_state = PolicyState(model=model, device=device, observation=observation)
 
     done = False
