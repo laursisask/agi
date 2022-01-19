@@ -214,7 +214,8 @@ class SumoEnv:
         raw_observation = self.client1.reset(
             session=session,
             randomization_factor=1.0,
-            map_name=self.current_map
+            map_name=self.current_map,
+            random_teleport=self.random_teleport_active()
         )
 
         if self.record_episode:
@@ -281,7 +282,8 @@ class SumoEnv:
         observation = transform_raw_state(self.client2.reset(
             session=session,
             randomization_factor=1.0,
-            map_name=self.current_map
+            map_name=self.current_map,
+            random_teleport=self.random_teleport_active()
         ))
 
         policy_state = PolicyState(
@@ -295,6 +297,9 @@ class SumoEnv:
             action = policy_state.sample_action()
             next_observation, _, done, _ = self.client2.step(tensor_to_action(action))
             policy_state.update(transform_raw_state(next_observation))
+
+    def random_teleport_active(self):
+        return 1000 < self.get_global_iteration() < 3000
 
 
 def clamp_probs(probs):
