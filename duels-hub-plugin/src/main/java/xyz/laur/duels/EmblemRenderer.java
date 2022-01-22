@@ -22,11 +22,13 @@ public class EmblemRenderer {
     public static final Schematic[] EMBLEMS;
 
     private final Plugin plugin;
+    private final World sumoWorld;
     private final List<Block> currentChanges = new ArrayList<>();
     private BukkitTask task;
 
-    public EmblemRenderer(Plugin plugin) {
+    public EmblemRenderer(Plugin plugin, World sumoWorld) {
         this.plugin = plugin;
+        this.sumoWorld = sumoWorld;
     }
 
     public void start() {
@@ -41,11 +43,11 @@ public class EmblemRenderer {
     private void changeEmblems() {
         removeExistingEmblems();
 
-        for (GameSession.GameMap map : GameSession.GameMap.values()) {
+        for (SumoGameSession.GameMap map : SumoGameSession.GameMap.values()) {
             for (EmblemPosition pos : randomEmblemPlacement(map)) {
                 Schematic newEmblem = pickEmblem();
                 if (newEmblem != null) {
-                    showEmblem(pos, newEmblem);
+                    showEmblem(sumoWorld, pos, newEmblem);
                 }
             }
         }
@@ -58,9 +60,7 @@ public class EmblemRenderer {
         currentChanges.clear();
     }
 
-    private void showEmblem(EmblemPosition pos, Schematic emblem) {
-        World world = getWorld();
-
+    private void showEmblem(World world, EmblemPosition pos, Schematic emblem) {
         if (pos.isPlacedAlongXAxis()) {
             int startX = pos.getX() - emblem.getLength() / 2;
             int startY = pos.getY();
@@ -104,12 +104,6 @@ public class EmblemRenderer {
         }
     }
 
-    private World getWorld() {
-        List<World> worlds = plugin.getServer().getWorlds();
-        assert worlds.size() == 1;
-        return worlds.get(0);
-    }
-
     static {
         try {
             EMBLEMS = getEmblems();
@@ -120,7 +114,7 @@ public class EmblemRenderer {
         }
     }
 
-    private static EmblemPosition[] randomEmblemPlacement(GameSession.GameMap map) {
+    private static EmblemPosition[] randomEmblemPlacement(SumoGameSession.GameMap map) {
         return map.getEmblemPositions()[random.nextInt(map.getEmblemPositions().length)];
     }
 

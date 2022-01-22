@@ -1,6 +1,5 @@
 package xyz.laur.duels;
 
-import com.sun.org.apache.xpath.internal.Arg;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -22,10 +21,10 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
-public class GameSessionTest {
+public class SumoGameSessionTest {
     private SessionManager sessionManager;
     private InvisibilityManager invisibilityManager;
-    private GameSession session;
+    private SumoGameSession session;
     private World world;
     private BukkitScheduler scheduler;
 
@@ -47,8 +46,8 @@ public class GameSessionTest {
 
         SkinChanger skinChanger = mock(SkinChanger.class);
 
-        session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, 0F,
-                GameSession.GameMap.PONSEN, true);
+        session = new SumoGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, 0F,
+                SumoGameSession.GameMap.PONSEN, true);
     }
 
     @Test
@@ -58,14 +57,14 @@ public class GameSessionTest {
 
         verify(invisibilityManager, times(1)).update();
 
-        assertEquals(GameSession.State.WAITING_FOR_PLAYERS, session.getState());
+        assertEquals(GameState.WAITING_FOR_PLAYERS, session.getState());
         assertTrue(session.hasPlayer(player1));
         verify(player1, never()).teleport(any(Location.class));
 
         Player player2 = createMockPlayer();
         session.addPlayer(player2);
 
-        assertEquals(GameSession.State.PLAYING, session.getState());
+        assertEquals(GameState.PLAYING, session.getState());
         assertTrue(session.hasPlayer(player1));
         assertTrue(session.hasPlayer(player2));
         verify(player1, times(1)).sendMessage("Game started");
@@ -83,10 +82,10 @@ public class GameSessionTest {
         Location from = new Location(world, 10, 150, 20);
         Location to = new Location(world, 10, 3, 23);
         session.onMove(new PlayerMoveEvent(unrelatedPlayer, from, to));
-        assertEquals(GameSession.State.PLAYING, session.getState());
+        assertEquals(GameState.PLAYING, session.getState());
 
         session.onMove(new PlayerMoveEvent(player1, from, to));
-        assertEquals(GameSession.State.ENDED, session.getState());
+        assertEquals(GameState.ENDED, session.getState());
         verify(player1, times(1)).sendMessage("You lost");
         verify(player1, never()).sendMessage(startsWith("metadata:win"));
 
@@ -103,10 +102,10 @@ public class GameSessionTest {
         Player player2 = createMockPlayer();
         session.addPlayer(player2);
 
-        assertEquals(GameSession.State.PLAYING, session.getState());
+        assertEquals(GameState.PLAYING, session.getState());
 
         session.onQuit(new PlayerQuitEvent(player2, null));
-        assertEquals(GameSession.State.ENDED, session.getState());
+        assertEquals(GameState.ENDED, session.getState());
 
         verify(player1, times(1)).sendMessage("You won");
         verify(player1, times(1)).sendMessage("metadata:win:1.00000");
@@ -123,14 +122,14 @@ public class GameSessionTest {
         Player player2 = createMockPlayer();
         session.addPlayer(player2);
 
-        assertEquals(GameSession.State.PLAYING, session.getState());
+        assertEquals(GameState.PLAYING, session.getState());
 
         ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
         verify(scheduler, times(1))
-                .scheduleSyncDelayedTask(any(Plugin.class), task.capture(), eq(GameSession.MAX_DURATION));
+                .scheduleSyncDelayedTask(any(Plugin.class), task.capture(), eq(SumoGameSession.MAX_DURATION));
 
         task.getValue().run();
-        assertEquals(GameSession.State.ENDED, session.getState());
+        assertEquals(GameState.ENDED, session.getState());
         verify(player1, times(1)).sendMessage("You lost");
         verify(player1, never()).sendMessage(startsWith("metadata:win"));
 
@@ -164,7 +163,7 @@ public class GameSessionTest {
         Player player2 = createMockPlayer();
         session.addPlayer(player2);
 
-        assertEquals(GameSession.State.PLAYING, session.getState());
+        assertEquals(GameState.PLAYING, session.getState());
 
         verify(player1, atLeast(1)).teleport(any(Location.class));
         verify(player2, atLeast(1)).teleport(any(Location.class));

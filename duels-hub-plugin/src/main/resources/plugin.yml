@@ -3,9 +3,9 @@ version: 1.0.0-SNAPSHOT
 main: xyz.laur.duels.DuelsHubPlugin
 depend: [ProtocolLib]
 commands:
-  join:
-    description: Joins a game session
-    usage: /join <session ID> <randomization factor> <map name> <random teleport>
+  sumo:
+    description: Joins a sumo game session
+    usage: /sumo <session ID> <randomization factor> <map name> <random teleport>
   games:
     description: Lists all ongoing games
     usage: /games

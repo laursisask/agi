@@ -8,15 +8,15 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-public class JoinCommand implements CommandExecutor {
+public class SumoJoinCommand implements CommandExecutor {
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
     private final Plugin plugin;
     private final World world;
 
-    public JoinCommand(SessionManager sessionManager, InvisibilityManager invisibilityManager, SkinChanger skinChanger,
-                       Plugin plugin, World world) {
+    public SumoJoinCommand(SessionManager sessionManager, InvisibilityManager invisibilityManager,
+                           SkinChanger skinChanger, Plugin plugin, World world) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
@@ -37,14 +37,14 @@ public class JoinCommand implements CommandExecutor {
 
         String sessionName = args[0];
         float randomizationFactor = Float.parseFloat(args[1]);
-        GameSession.GameMap map = GameSession.GameMap.fromName(args[2]);
+        SumoGameSession.GameMap map = SumoGameSession.GameMap.fromName(args[2]);
         boolean randomTeleport = Boolean.parseBoolean(args[3]);
 
-        GameSession session = sessionManager.getByName(sessionName);
+        SumoGameSession session = (SumoGameSession) sessionManager.getByName(sessionName);
 
         if (session == null) {
             plugin.getLogger().info("Creating new session");
-            session = new GameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
+            session = new SumoGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
                     randomizationFactor, map, randomTeleport);
             sessionManager.addSession(sessionName, session);
         }
