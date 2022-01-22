@@ -1,6 +1,5 @@
 import copy
 import logging
-import math
 import os
 import threading
 import time
@@ -179,18 +178,16 @@ def standardize(x, mask):
 
 def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropagation_steps,
                    clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
-    model.zero_grad()
-
     all_observations, all_actions, all_returns, all_advantages, all_mask = batch
 
     all_advantages = standardize(all_advantages, all_mask)
-
-    backward_steps = math.ceil(all_observations.size(1) / backpropagation_steps)
 
     actor_loss_sum = 0
     critic_loss_sum = 0
     entropy_loss_sum = 0
     loss_sum = 0
+    grad_norm_sum = 0
+    num_microbatches = 0
 
     last_state = None
     last_state_old = None
@@ -202,6 +199,8 @@ def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropa
             all_advantages.split(backpropagation_steps, dim=1),
             all_mask.split(backpropagation_steps, dim=1)
     ):
+        model.zero_grad()
+
         observations = observations.to(device)
         actions = actions.to(device)
         returns = returns.to(device)
@@ -257,31 +256,29 @@ def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropa
         assert entropy_loss.numel() == 1
 
         loss = actor_loss + value_coefficient * critic_loss + entropy_coefficient * entropy_loss
-        (loss / backward_steps).backward()
+        loss.backward()
+
+        assert loss < 1e6
+
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+        optimizer.step()
 
         actor_loss_sum += actor_loss.item()
         critic_loss_sum += critic_loss.item()
         entropy_loss_sum += entropy_loss.item()
         loss_sum += loss.item()
-
-        assert loss < 1e6
+        grad_norm_sum += grad_norm.item()
+        num_microbatches += 1
 
         last_state.detach_()
 
-    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-    optimizer.step()
-
-    avg_loss = torch.tensor([loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_actor_loss = torch.tensor([actor_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_critic_loss = torch.tensor([critic_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_entropy_loss = torch.tensor([entropy_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-
     return (
-        avg_loss,
-        avg_actor_loss,
-        avg_critic_loss,
-        avg_entropy_loss,
-        grad_norm.item()
+        loss_sum,
+        actor_loss_sum,
+        critic_loss_sum,
+        entropy_loss_sum,
+        grad_norm_sum,
+        num_microbatches
     )
 
 
@@ -328,7 +325,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         num_of_batches = 0
 
         for batch in data_loader:
-            loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
+            loss, actor_loss, critic_loss, entropy_loss, grad_norm, num_microbatches = train_on_batch(
                 device,
                 optimizer,
                 model,
@@ -342,7 +339,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
                 entropy_coefficient=entropy_coefficient
             )
 
-            num_of_batches += 1
+            num_of_batches += num_microbatches
 
             loss_sum += loss
             actor_loss_sum += actor_loss
@@ -352,7 +349,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
             metrics.add_scalar("Loss/Actor", actor_loss_sum / num_of_batches, iteration)
             metrics.add_scalar("Loss/Critic", critic_loss_sum / num_of_batches, iteration)
             metrics.add_scalar("Loss/Entropy", entropy_loss_sum / num_of_batches, iteration)
-            metrics.add_scalar("Unclipped gradient norm", grad_norm, iteration)
+            metrics.add_scalar("Unclipped gradient norm", grad_norm / num_of_batches, iteration)
 
             iteration += 1
 
