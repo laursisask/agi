@@ -44,8 +44,8 @@ def compute_log_prob_dists(model_output: torch.Tensor) -> Tuple[
     assert pitch_a.shape == (batch_size,)
     assert pitch_b.shape == (batch_size,)
 
-    yaw_mean = (torch.sigmoid(yaw_a) - 0.5) * 12
-    yaw_std = torch.clamp(torch.sigmoid(yaw_b) * 6, min=eps)
+    yaw_mean = (torch.sigmoid(yaw_a) - 0.5) * 24
+    yaw_std = torch.clamp(torch.sigmoid(yaw_b) * 9, min=eps)
 
     pitch_mean = (torch.sigmoid(pitch_a) - 0.5) * 12
     pitch_std = torch.clamp(torch.sigmoid(pitch_b) * 6, min=eps)
