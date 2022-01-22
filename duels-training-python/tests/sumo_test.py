@@ -5,8 +5,7 @@ import pytest
 import torch
 from terminator import Action
 
-from duels_training.sumo import action_log_probs, sample_action, compute_entropies, OpponentSampler, get_available_maps, \
-    get_next_map
+from duels_training.sumo import action_log_probs, sample_action, compute_entropies, OpponentSampler, get_available_maps
 
 
 def inverse_sigmoid(x):
