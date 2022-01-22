@@ -1,8 +1,8 @@
 package xyz.laur.duels;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
+import org.bukkit.WorldCreator;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -19,23 +19,18 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        World world = Bukkit.getWorld("world");
-
-        if (world == null) {
-            throw new IllegalStateException("Could not find find game world");
-        }
-
-        world.setThundering(false);
-        world.setStorm(false);
+        World sumoWorld = new WorldCreator("sumo").createWorld();
+        sumoWorld.setThundering(false);
+        sumoWorld.setStorm(false);
 
         SessionManager sessionManager = new SessionManager();
-        invisibilityManager = new InvisibilityManager(sessionManager, world);
+        invisibilityManager = new InvisibilityManager(sessionManager, getServer());
         invisibilityManager.update();
 
         SkinChanger skinChanger = new SkinChanger(this);
 
-        getCommand("join").setExecutor(new JoinCommand(sessionManager, invisibilityManager, skinChanger,
-                this, world));
+        getCommand("sumo").setExecutor(new SumoJoinCommand(sessionManager, invisibilityManager, skinChanger,
+                this, sumoWorld));
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -43,7 +38,7 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         showPlayerHealth();
         createTeam();
 
-        emblemRenderer = new EmblemRenderer(this);
+        emblemRenderer = new EmblemRenderer(this, sumoWorld);
         emblemRenderer.start();
     }
 

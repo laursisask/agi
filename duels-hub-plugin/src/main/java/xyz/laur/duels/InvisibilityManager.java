@@ -1,20 +1,20 @@
 package xyz.laur.duels;
 
-import org.bukkit.World;
+import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
 public class InvisibilityManager {
     private final SessionManager sessionManager;
-    private final World world;
+    private final Server server;
 
-    public InvisibilityManager(SessionManager sessionManager, World world) {
+    public InvisibilityManager(SessionManager sessionManager, Server server) {
         this.sessionManager = sessionManager;
-        this.world = world;
+        this.server = server;
     }
 
     public void update() {
-        for (Player a : world.getPlayers()) {
-            for (Player b : world.getPlayers()) {
+        for (Player a : server.getOnlinePlayers()) {
+            for (Player b : server.getOnlinePlayers()) {
                 GameSession sessionA = sessionManager.getPlayerSession(a);
                 GameSession sessionB = sessionManager.getPlayerSession(b);
                 boolean shouldSee = sessionA == null || sessionA.equals(sessionB);

@@ -42,7 +42,7 @@ public class GamesCommand implements CommandExecutor {
 
             String playerString = String.join(", ", playerNames);
             String stateString = formatGameState(session.getState());
-            String mapName = session.getMap().getDisplayName();
+            String mapName = session.getMapName();
 
             sender.sendMessage(String.format(format, name, playerString, stateString, mapName));
 
@@ -52,7 +52,7 @@ public class GamesCommand implements CommandExecutor {
         return true;
     }
 
-    private String formatGameState(GameSession.State state) {
+    private String formatGameState(GameState state) {
         switch (state) {
             case WAITING_FOR_PLAYERS:
                 return "Waiting for Players";

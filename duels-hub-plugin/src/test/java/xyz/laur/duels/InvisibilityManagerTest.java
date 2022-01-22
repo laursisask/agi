@@ -1,6 +1,6 @@
 package xyz.laur.duels;
 
-import org.bukkit.World;
+import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.junit.Before;
 import org.junit.Test;
@@ -12,21 +12,21 @@ import static org.mockito.Mockito.*;
 public class InvisibilityManagerTest {
     private SessionManager sessionManager;
     private InvisibilityManager invisibilityManager;
-    private World world;
+    private Server server;
 
     @Before
     public void setUp() {
         sessionManager = new SessionManager();
-        world = mock(World.class);
+        server = mock(Server.class);
 
-        invisibilityManager = new InvisibilityManager(sessionManager, world);
+        invisibilityManager = new InvisibilityManager(sessionManager, server);
     }
 
     @Test
     public void testInvisibility() {
-        GameSession session1 = mock(GameSession.class);
-        GameSession session2 = mock(GameSession.class);
-        GameSession session3 = mock(GameSession.class);
+        SumoGameSession session1 = mock(SumoGameSession.class);
+        SumoGameSession session2 = mock(SumoGameSession.class);
+        SumoGameSession session3 = mock(SumoGameSession.class);
 
         sessionManager.addSession("a", session1);
         sessionManager.addSession("b", session2);
@@ -50,7 +50,7 @@ public class InvisibilityManagerTest {
         Player player6 = mock(Player.class);
         when(player6.canSee(any(Player.class))).thenReturn(true);
 
-        when(world.getPlayers()).thenReturn(Arrays.asList(player1, player2, player3, player4, player5, player6));
+        doReturn(Arrays.asList(player1, player2, player3, player4, player5, player6)).when(server).getOnlinePlayers();
 
         session1.addPlayer(player1);
         session1.addPlayer(player2);
