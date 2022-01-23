@@ -34,7 +34,7 @@ public class EmblemRenderer {
     }
 
     public void start() {
-        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::changeEmblems, 0, 800);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::changeEmblems, 0, 2400);
     }
 
     public void stop() {
