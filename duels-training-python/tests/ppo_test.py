@@ -1,4 +1,3 @@
-import math
 import random
 import statistics
 
@@ -235,7 +234,7 @@ def test_train_on_batch():
 
     batch = (observations, actions, returns, advantages, mask)
 
-    loss, actor_loss, critic_loss, entropy_loss, grad_norm, num_microbatches = train_on_batch(
+    loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
         torch.device("cpu"),
         optimizer,
         model,
@@ -249,15 +248,13 @@ def test_train_on_batch():
         entropy_coefficient=0.01
     )
 
-    assert num_microbatches == math.ceil(max_length / 10)
-
     # Sanity check
     # Make sure that these values do not change during refactoring
-    assert loss / num_microbatches == pytest.approx(0.6, abs=0.1)
-    assert actor_loss / num_microbatches == pytest.approx(0.0003, abs=0.0001)
-    assert critic_loss / num_microbatches == pytest.approx(1.2, abs=0.1)
-    assert entropy_loss / num_microbatches == pytest.approx(-1.4, abs=0.1)
-    assert grad_norm / num_microbatches == pytest.approx(1.1, abs=0.1)
+    assert loss == pytest.approx(0.6, abs=0.1)
+    assert actor_loss == pytest.approx(0.0003, abs=0.0001)
+    assert critic_loss == pytest.approx(1.2, abs=0.1)
+    assert entropy_loss == pytest.approx(-1.4, abs=0.1)
+    assert grad_norm == pytest.approx(0.4, abs=0.1)
 
 
 def test_train_on_batch_critic_loss_zero():
@@ -283,7 +280,7 @@ def test_train_on_batch_critic_loss_zero():
 
     batch = (observations, actions, returns, advantages, mask)
 
-    loss, actor_loss, critic_loss, entropy_loss, grad_norm, num_microbatches = train_on_batch(
+    loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
         torch.device("cpu"),
         optimizer,
         model,
@@ -297,9 +294,8 @@ def test_train_on_batch_critic_loss_zero():
         entropy_coefficient=0.01
     )
 
-    # The weights change during training, so the loss isn't exactly 0
-    # (around 1e-5) for examples that are seen later
-    assert critic_loss == pytest.approx(1e-5, rel=0.5)
+    assert critic_loss == pytest.approx(0, abs=1e-10)
+    assert loss == pytest.approx(actor_loss + 0.01 * entropy_loss, abs=1e-6)
 
 
 def test_collect_data_and_train(tmp_path):
@@ -309,7 +305,7 @@ def test_collect_data_and_train(tmp_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = GridworldModel()
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters())
 
     policy = GridworldPolicy(model)
     envs = [Gridworld(device=device) for _ in range(4)]
@@ -322,10 +318,9 @@ def test_collect_data_and_train(tmp_path):
         optimizer=optimizer,
         metrics=SummaryWriter(log_dir=tmp_path),
         reward_stats=IncrementalStatsCalculator(),
-        iterations=10,
-        steps_per_iteration=6400,
-        batch_size=32,
-        backpropagation_steps=10,
+        iterations=14,
+        steps_per_iteration=4096,
+        batch_size=8,
         value_coefficient=0.005,
         entropy_coefficient=0.01,
         clip_range=0.2,
