@@ -6,6 +6,9 @@ commands:
   sumo:
     description: Joins a sumo game session
     usage: /sumo <session ID> <randomization factor> <map name> <random teleport>
+  classic:
+    description: Joins a classic duels game session
+    usage: /classic <session ID> <map name> <random teleport>
   games:
     description: Lists all ongoing games
     usage: /games

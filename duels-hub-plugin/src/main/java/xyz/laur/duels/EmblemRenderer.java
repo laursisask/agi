@@ -23,12 +23,14 @@ public class EmblemRenderer {
 
     private final Plugin plugin;
     private final World sumoWorld;
+    private final World classicWorld;
     private final List<Block> currentChanges = new ArrayList<>();
     private BukkitTask task;
 
-    public EmblemRenderer(Plugin plugin, World sumoWorld) {
+    public EmblemRenderer(Plugin plugin, World sumoWorld, World classicWorld) {
         this.plugin = plugin;
         this.sumoWorld = sumoWorld;
+        this.classicWorld = classicWorld;
     }
 
     public void start() {
@@ -48,6 +50,15 @@ public class EmblemRenderer {
                 Schematic newEmblem = pickEmblem();
                 if (newEmblem != null) {
                     showEmblem(sumoWorld, pos, newEmblem);
+                }
+            }
+        }
+
+        for (ClassicGameSession.GameMap map : ClassicGameSession.GameMap.values()) {
+            for (EmblemPosition pos : map.getEmblemPositions()) {
+                Schematic newEmblem = pickEmblem();
+                if (newEmblem != null) {
+                    showEmblem(classicWorld, pos, newEmblem);
                 }
             }
         }

@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
@@ -191,7 +192,7 @@ public class SumoGameSession implements Listener, GameSession {
         if (state != GameState.WAITING_FOR_PLAYERS) throw new IllegalStateException("Session is in invalid state");
         if (players.size() != 2) throw new IllegalStateException("Need exactly 2 players to start a game");
 
-        plugin.getLogger().info("Starting game");
+        plugin.getLogger().info("Starting sumo duel game");
 
         for (int i = 0; i < players.size(); i++) {
             Player player = players.get(i);
@@ -220,6 +221,7 @@ public class SumoGameSession implements Listener, GameSession {
         PlayerQuitEvent.getHandlerList().unregister(this);
         PlayerMoveEvent.getHandlerList().unregister(this);
         EntityDamageByEntityEvent.getHandlerList().unregister(this);
+        EntityDamageEvent.getHandlerList().unregister(this);
 
         if (winner == null) {
             for (Player player : players) {
@@ -284,7 +286,7 @@ public class SumoGameSession implements Listener, GameSession {
         Player winner = getOtherPlayer(event.getPlayer());
         endGame(winner);
 
-        plugin.getLogger().info("Game ended due to one player quiting");
+        plugin.getLogger().info("Sumo game ended due to one player quiting");
     }
 
     @EventHandler
@@ -295,7 +297,14 @@ public class SumoGameSession implements Listener, GameSession {
         if (event.getTo().getY() < map.minY) {
             Player winner = getOtherPlayer(player);
             endGame(winner);
-            plugin.getLogger().info("Game ended due to one player falling off the platform");
+            plugin.getLogger().info("Sumo game ended due to one player falling off the platform");
+        }
+    }
+
+    @EventHandler
+    public void onDamage(EntityDamageEvent event) {
+        if (event.getEntity() instanceof Player && hasPlayer((Player) event.getEntity())) {
+            event.setDamage(0);
         }
     }
 

@@ -43,7 +43,7 @@ public class SumoJoinCommand implements CommandExecutor {
         SumoGameSession session = (SumoGameSession) sessionManager.getByName(sessionName);
 
         if (session == null) {
-            plugin.getLogger().info("Creating new session");
+            plugin.getLogger().info("Creating new sumo session");
             session = new SumoGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
                     randomizationFactor, map, randomTeleport);
             sessionManager.addSession(sessionName, session);
