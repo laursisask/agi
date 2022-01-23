@@ -1,5 +1,7 @@
 package xyz.laur.duels;
 
+import com.comphenix.packetwrapper.AbstractPacket;
+import com.comphenix.packetwrapper.WrapperPlayServerEntityEquipment;
 import com.comphenix.packetwrapper.WrapperPlayServerNamedEntitySpawn;
 import com.comphenix.packetwrapper.WrapperPlayServerPlayerInfo;
 import com.comphenix.protocol.PacketType;
@@ -58,6 +60,7 @@ public class SkinChanger extends PacketAdapter {
 
         sendAddPlayerPacket(player);
         sendPlayerSpawnPacket(player);
+        sendEntityEquipment(player);
     }
 
     private void sendPlayerSpawnPacket(Player player) {
@@ -73,10 +76,7 @@ public class SkinChanger extends PacketAdapter {
         packet.setPitch(location.getPitch());
         packet.setCurrentItem(player.getItemInHand().getType().getId());
 
-        player.getWorld().getPlayers()
-                .stream()
-                .filter(p -> p.canSee(player) && isTracked(p, player) && !p.getUniqueId().equals(player.getUniqueId()))
-                .forEach(packet::sendPacket);
+        sendPacket(player, packet);
     }
 
     private void sendAddPlayerPacket(Player player) {
@@ -94,6 +94,42 @@ public class SkinChanger extends PacketAdapter {
         data.add(new PlayerInfoData(profile, ping, gameMode, null));
         packet.setData(data);
 
+        sendPacket(player, packet);
+    }
+
+    private void sendEntityEquipment(Player player) {
+        WrapperPlayServerEntityEquipment packetHand = new WrapperPlayServerEntityEquipment();
+        packetHand.setEntityID(player.getEntityId());
+        packetHand.setSlot(0);
+        packetHand.setItem(player.getItemInHand());
+        sendPacket(player, packetHand);
+
+        WrapperPlayServerEntityEquipment packetBoots = new WrapperPlayServerEntityEquipment();
+        packetBoots.setEntityID(player.getEntityId());
+        packetBoots.setSlot(1);
+        packetBoots.setItem(player.getInventory().getBoots());
+        sendPacket(player, packetBoots);
+
+        WrapperPlayServerEntityEquipment packetLeggings = new WrapperPlayServerEntityEquipment();
+        packetLeggings.setEntityID(player.getEntityId());
+        packetLeggings.setSlot(2);
+        packetLeggings.setItem(player.getInventory().getLeggings());
+        sendPacket(player, packetLeggings);
+
+        WrapperPlayServerEntityEquipment packetChestplate = new WrapperPlayServerEntityEquipment();
+        packetChestplate.setEntityID(player.getEntityId());
+        packetChestplate.setSlot(3);
+        packetChestplate.setItem(player.getInventory().getChestplate());
+        sendPacket(player, packetChestplate);
+
+        WrapperPlayServerEntityEquipment packetHelmet = new WrapperPlayServerEntityEquipment();
+        packetHelmet.setEntityID(player.getEntityId());
+        packetHelmet.setSlot(4);
+        packetHelmet.setItem(player.getInventory().getHelmet());
+        sendPacket(player, packetHelmet);
+    }
+
+    private void sendPacket(Player player, AbstractPacket packet) {
         player.getWorld().getPlayers()
                 .stream()
                 .filter(p -> p.canSee(player) && isTracked(p, player) && !p.getUniqueId().equals(player.getUniqueId()))
