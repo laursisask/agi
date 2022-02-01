@@ -558,7 +558,7 @@ def train(initial_model, initial_optimizer, initial_reward_stats, start_global_i
         nonlocal last_num_of_episodes
         last_num_of_episodes = len(trajectories)
 
-    num_clients = 8
+    num_clients = 6
     assert num_clients % 2 == 0
 
     clients = []
