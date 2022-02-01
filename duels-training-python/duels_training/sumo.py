@@ -492,7 +492,7 @@ def train(initial_model, initial_optimizer, initial_reward_stats, start_global_i
         logging.info(f"Loading model weights from {initial_model}")
         model.load_state_dict(torch.load(initial_model, map_location=torch.device("cpu")))
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=2.5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     if initial_optimizer is not None:
         logging.info(f"Loading optimizer weights from {initial_optimizer}")
         state_dict = torch.load(initial_optimizer)
