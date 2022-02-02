@@ -137,10 +137,16 @@ public class SumoGameSession implements Listener, GameSession {
         int spawnLocPair = pickSpawnLocationPair(randomizationFactor);
 
         spawnLocations = new Location[2];
-        for (int i = 0; i < map.spawnLocations.length; i++) {
-            spawnLocations[i] = map.spawnLocations[spawnLocPair][i].clone();
-            spawnLocations[i].setWorld(world);
+        if (random.nextBoolean()) {
+            spawnLocations[0] = map.spawnLocations[spawnLocPair][0].clone();
+            spawnLocations[1] = map.spawnLocations[spawnLocPair][1].clone();
+        } else {
+            spawnLocations[0] = map.spawnLocations[spawnLocPair][1].clone();
+            spawnLocations[1] = map.spawnLocations[spawnLocPair][0].clone();
         }
+
+        spawnLocations[0].setWorld(world);
+        spawnLocations[1].setWorld(world);
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
 
