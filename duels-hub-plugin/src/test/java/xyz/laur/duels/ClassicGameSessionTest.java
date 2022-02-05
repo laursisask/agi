@@ -10,6 +10,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -300,6 +301,41 @@ public class ClassicGameSessionTest {
         EntityShootBowEvent event = new EntityShootBowEvent(player3, new ItemStack(Material.BOW), arrow, 0.5F);
         session.onBowShoot(event);
 
+        verify(player3, never()).sendMessage(anyString());
+    }
+
+    @Test
+    public void testFishingRodMetadata() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        session.onPlayerFish(new PlayerFishEvent(player1, null, null, PlayerFishEvent.State.FISHING));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
+
+        session.onPlayerFish(new PlayerFishEvent(player1, null, null, PlayerFishEvent.State.IN_GROUND));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
+
+        session.onPlayerFish(new PlayerFishEvent(player1, null, null, PlayerFishEvent.State.CAUGHT_FISH));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
+
+        session.onPlayerFish(new PlayerFishEvent(player1, null, null, PlayerFishEvent.State.FAILED_ATTEMPT));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
+
+        session.onPlayerFish(new PlayerFishEvent(player1, null, null, PlayerFishEvent.State.CAUGHT_ENTITY));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
+
+        Player player3 = createMockPlayer();
+        session.onPlayerFish(new PlayerFishEvent(player3, null, null, PlayerFishEvent.State.FISHING));
+        verify(player1, times(1)).sendMessage("metadata:fishing_rod_used:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_rod_used:1.00000");
         verify(player3, never()).sendMessage(anyString());
     }
 
