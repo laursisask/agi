@@ -41,7 +41,7 @@ def test_action_log_prob_individual():
         torch.log(torch.tensor([0.7, 0.2, 0.1])),
         torch.log(torch.tensor([0.1, 0.5, 0.4])),
         inverse_sigmoid(torch.tensor([0.7, 0.95, 0.6])),
-        inverse_sigmoid(torch.tensor([4.0 / 12 + 0.5, 3.0 / 6])),
+        inverse_sigmoid(torch.tensor([4.0 / 24 + 0.5, 3.0 / 9])),
         inverse_sigmoid(torch.tensor([-5.0 / 12 + 0.5, 2.0 / 6]))
     ], dim=0).unsqueeze(0)
 
@@ -67,7 +67,7 @@ def test_compute_entropies():
         torch.log(torch.tensor([0.7, 0.2, 0.1])),
         torch.log(torch.tensor([0.1, 0.5, 0.4])),
         inverse_sigmoid(torch.tensor([0.7, 0.95, 0.6])),
-        inverse_sigmoid(torch.tensor([4.0 / 12 + 0.5, 3.0 / 6])),
+        inverse_sigmoid(torch.tensor([4.0 / 24 + 0.5, 3.0 / 9])),
         inverse_sigmoid(torch.tensor([-5.0 / 12 + 0.5, 2.0 / 6]))
     ], dim=0).unsqueeze(0)
 
@@ -84,7 +84,7 @@ def test_sample_action():
         torch.log(torch.tensor([0.7, 0.2, 0.1])),
         torch.log(torch.tensor([0.1, 0.5, 0.4])),
         inverse_sigmoid(torch.tensor([0.7, 0.95, 0.6])),
-        inverse_sigmoid(torch.tensor([4.0 / 12 + 0.5, 3.0 / 6])),
+        inverse_sigmoid(torch.tensor([4.0 / 24 + 0.5, 3.0 / 9])),
         inverse_sigmoid(torch.tensor([-5.0 / 12 + 0.5, 2.0 / 6]))
     ], dim=0).unsqueeze(0)
 
