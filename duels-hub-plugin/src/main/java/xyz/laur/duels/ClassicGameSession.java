@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -392,6 +393,10 @@ public class ClassicGameSession implements Listener, GameSession {
                 Player attacker = (Player) shooter;
 
                 if (hasPlayer(attacker)) {
+                    if (event.getDamager().getType() == EntityType.FISHING_HOOK) {
+                        sendFishingHookMetadata(attacker);
+                    }
+
                     handleDamage(attacker, target, event.getFinalDamage());
                 } else {
                     plugin.getLogger().info("Player got damaged by projectile from a player that is not in their session");
@@ -402,10 +407,14 @@ public class ClassicGameSession implements Listener, GameSession {
     }
 
     private void handleDamage(Player attacker, Player target, double damage) {
-        if (hasPlayer(attacker) && hasPlayer(target)) {
+        if (hasPlayer(attacker) && hasPlayer(target) && damage > 0.1) {
             sendMetadata(attacker, "hits_done", damage);
             sendMetadata(target, "hits_received", damage);
         }
+    }
+
+    private void sendFishingHookMetadata(Player attacker) {
+        sendMetadata(attacker, "fishing_hook_hit", 1);
     }
 
     private Player randomPlayer() {
