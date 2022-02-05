@@ -28,10 +28,12 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         World sumoWorld = new WorldCreator("sumo").createWorld();
         sumoWorld.setThundering(false);
         sumoWorld.setStorm(false);
+        sumoWorld.setSpawnFlags(false, false);
 
         World classicWorld = new WorldCreator("classic").createWorld();
         classicWorld.setThundering(false);
         classicWorld.setStorm(false);
+        classicWorld.setSpawnFlags(false, false);
         preloadClassicChunks(classicWorld);
 
         sessionManager = new SessionManager();
