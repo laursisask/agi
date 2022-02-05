@@ -75,11 +75,11 @@ def sample_action(model_output: torch.Tensor) -> terminator.Action:
     pitch_action = normal_actions[1]
 
     return Action(
-        forward_action.item() - 1,
-        left_action.item() - 1,
-        bool(jumping_action.to(torch.bool).item()),
-        bool(attacking_action.to(torch.bool).item()),
-        bool(sprinting_action.to(torch.bool).item()),
-        yaw_action.item(),
-        pitch_action.item()
+        forward=forward_action.item() - 1,
+        left=left_action.item() - 1,
+        jumping=bool(jumping_action.to(torch.bool).item()),
+        attacking=bool(attacking_action.to(torch.bool).item()),
+        sprinting=bool(sprinting_action.to(torch.bool).item()),
+        delta_yaw=yaw_action.item(),
+        delta_pitch=pitch_action.item()
     )
