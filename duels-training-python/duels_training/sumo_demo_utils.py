@@ -1,7 +1,7 @@
 import torch
 
 from duels_training.sumo_policy import sample_action
-from duels_training.sumo_preprocessing import transform_raw_state
+from duels_training.preprocessing import transform_raw_state
 
 
 class PolicyState:

@@ -24,7 +24,7 @@ from duels_training.stats_utils import normal_log_probs, inverse_log_prob, categ
 from duels_training.sumo_maps import MAPS
 from duels_training.sumo_model import SumoModel
 from duels_training.sumo_policy import compute_log_prob_dists, sample_action
-from duels_training.sumo_preprocessing import transform_raw_state
+from duels_training.preprocessing import transform_raw_state
 
 
 class EpisodeStatsAggregator:
