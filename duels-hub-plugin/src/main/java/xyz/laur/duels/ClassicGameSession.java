@@ -318,11 +318,11 @@ public class ClassicGameSession implements Listener, GameSession {
         Player player = randomPlayer();
 
         double distanceBetweenPlayers = player.getLocation().distance(getOtherPlayer(player).getLocation());
-        if (distanceBetweenPlayers < 3 && random.nextDouble() < 1D / 200) {
+        if (distanceBetweenPlayers < 3 && random.nextDouble() < 1D / 350) {
             plugin.getLogger().info("Randomly teleporting one player");
             Location newLocation = player.getLocation().clone();
-            newLocation.setPitch(newLocation.getPitch() + (random.nextFloat() - 0.5F) * 30);
-            newLocation.setYaw(newLocation.getYaw() + (random.nextFloat() - 0.5F) * 30);
+            newLocation.setPitch(newLocation.getPitch() + (random.nextFloat() - 0.5F) * 90);
+            newLocation.setYaw(newLocation.getYaw() + (random.nextFloat() - 0.5F) * 180);
             player.teleport(newLocation);
         }
     }
