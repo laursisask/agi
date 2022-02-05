@@ -266,7 +266,7 @@ public class ClassicGameSessionTest {
         verify(player1, atLeast(1)).teleport(teleportLocs1.capture());
         verify(player2, atLeast(1)).teleport(teleportLocs2.capture());
 
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 4000; i++) {
             task.getValue().run();
         }
 
