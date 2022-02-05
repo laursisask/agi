@@ -6,10 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Sheep;
+import org.bukkit.entity.*;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
@@ -233,6 +230,7 @@ public class ClassicGameSessionTest {
         when(damageEvent.getEntity()).thenReturn(player2);
 
         Arrow arrow = mock(Arrow.class);
+        when(arrow.getType()).thenReturn(EntityType.ARROW);
         when(arrow.getShooter()).thenReturn(mock(Player.class));
         when(damageEvent.getDamager()).thenReturn(arrow);
 
@@ -242,6 +240,34 @@ public class ClassicGameSessionTest {
 
         verify(player1, never()).sendMessage("metadata:hits_done:3.50000");
         verify(player2, never()).sendMessage("metadata:hits_received:3.50000");
+    }
+
+    @Test
+    public void testFishingHookAttack() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        EntityDamageByEntityEvent damageEvent = mock(EntityDamageByEntityEvent.class);
+        when(damageEvent.getFinalDamage()).thenReturn(0D);
+        when(damageEvent.getEntity()).thenReturn(player2);
+
+        FishHook hook = mock(FishHook.class);
+        when(hook.getType()).thenReturn(EntityType.FISHING_HOOK);
+        when(hook.getShooter()).thenReturn(player1);
+        when(damageEvent.getDamager()).thenReturn(hook);
+
+        session.onPlayerDamage(damageEvent);
+
+        verify(damageEvent, never()).setCancelled(anyBoolean());
+
+        verify(player1, never()).sendMessage("metadata:hits_done:0.00000");
+        verify(player2, never()).sendMessage("metadata:hits_received:0.00000");
+
+        verify(player1, times(1)).sendMessage("metadata:fishing_hook_hit:1.00000");
+        verify(player2, never()).sendMessage("metadata:fishing_hook_hit:1.00000");
     }
 
     @Test
