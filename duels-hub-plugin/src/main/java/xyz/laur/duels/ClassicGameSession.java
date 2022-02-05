@@ -211,14 +211,20 @@ public class ClassicGameSession implements Listener, GameSession {
             player.sendMessage("Game started");
             player.setHealth(player.getMaxHealth());
             giveItems(player);
-
-            skinChanger.changeSkin(player);
         }
 
         if (randomTeleport) {
             randomTeleportTask = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
                     this::randomTeleportTick, 40, 1);
         }
+
+        // Postpone changing skin because sometimes it makes players invisible if set
+        // at the same time as players are teleported
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+            if (state == GameState.PLAYING) {
+                players.forEach(skinChanger::changeSkin);
+            }
+        }, 100);
 
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             if (state == GameState.PLAYING) {
