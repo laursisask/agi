@@ -1,6 +1,7 @@
 package xyz.laur.duels;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
@@ -13,6 +14,7 @@ import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.*;
 
@@ -30,6 +32,7 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         World classicWorld = new WorldCreator("classic").createWorld();
         classicWorld.setThundering(false);
         classicWorld.setStorm(false);
+        preloadClassicChunks(classicWorld);
 
         sessionManager = new SessionManager();
         invisibilityManager = new InvisibilityManager(sessionManager, getServer());
@@ -57,6 +60,11 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         emblemRenderer.stop();
+    }
+
+    @EventHandler
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        event.setCancelled(true);
     }
 
     @EventHandler
@@ -136,5 +144,24 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
 
         Team team = scoreboard.registerNewTeam("all");
         team.setPrefix(ChatColor.RED.toString());
+    }
+
+    // When a chunk is not loaded and player is teleported to it, then the player will
+    // get stuck inside a block and die. To prevent that from happening, preload chunks
+    // where players are teleported when the game starts.
+    private void preloadClassicChunks(World world) {
+        for (ClassicGameSession.GameMap map : ClassicGameSession.GameMap.values()) {
+            Location spawnLoc1 = map.getSpawnLocation1().clone();
+            spawnLoc1.setWorld(world);
+            if (!spawnLoc1.getChunk().load()) {
+                throw new RuntimeException("Failed to preload chunk");
+            }
+
+            Location spawnLoc2 = map.getSpawnLocation2().clone();
+            spawnLoc2.setWorld(world);
+            if (!spawnLoc2.getChunk().load()) {
+                throw new RuntimeException("Failed to preload chunk");
+            }
+        }
     }
 }

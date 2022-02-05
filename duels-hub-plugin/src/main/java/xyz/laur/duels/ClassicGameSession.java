@@ -108,6 +108,14 @@ public class ClassicGameSession implements Listener, GameSession {
             throw new IllegalArgumentException("No map with name " + name);
         }
 
+        public Location getSpawnLocation1() {
+            return spawnLocation1;
+        }
+
+        public Location getSpawnLocation2() {
+            return spawnLocation2;
+        }
+
         public String getDisplayName() {
             return displayName;
         }
