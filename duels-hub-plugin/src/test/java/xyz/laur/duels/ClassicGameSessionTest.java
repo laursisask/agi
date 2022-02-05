@@ -3,6 +3,7 @@ package xyz.laur.duels;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
@@ -11,7 +12,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
@@ -239,6 +242,39 @@ public class ClassicGameSessionTest {
 
         verify(player1, never()).sendMessage("metadata:hits_done:3.50000");
         verify(player2, never()).sendMessage("metadata:hits_received:3.50000");
+    }
+
+    @Test
+    public void testShootArrowMetadata() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        Arrow arrow = mock(Arrow.class);
+        EntityShootBowEvent event = new EntityShootBowEvent(player1, new ItemStack(Material.BOW), arrow, 0.5F);
+        session.onBowShoot(event);
+
+        verify(player1, times(1)).sendMessage("metadata:shoot_arrow:0.50000");
+        verify(player2, never()).sendMessage("metadata:shoot_arrow:0.50000");
+    }
+
+    @Test
+    public void testShootArrowUnrelatedPlayer() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        Player player3 = createMockPlayer();
+
+        Arrow arrow = mock(Arrow.class);
+        EntityShootBowEvent event = new EntityShootBowEvent(player3, new ItemStack(Material.BOW), arrow, 0.5F);
+        session.onBowShoot(event);
+
+        verify(player3, never()).sendMessage(anyString());
     }
 
     @Test

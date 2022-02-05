@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -244,6 +245,7 @@ public class ClassicGameSession implements Listener, GameSession {
         PlayerQuitEvent.getHandlerList().unregister(this);
         EntityDamageByEntityEvent.getHandlerList().unregister(this);
         EntityDamageEvent.getHandlerList().unregister(this);
+        EntityShootBowEvent.getHandlerList().unregister(this);
 
         if (winner == null) {
             for (Player player : players) {
@@ -341,6 +343,17 @@ public class ClassicGameSession implements Listener, GameSession {
         endGame(winner);
 
         plugin.getLogger().info("Game ended due to one player quiting");
+    }
+
+    @EventHandler
+    public void onBowShoot(EntityShootBowEvent event) {
+        if (state != GameState.PLAYING) return;
+        if (!(event.getEntity() instanceof Player)) return;
+
+        Player shooter = (Player) event.getEntity();
+        if (hasPlayer(shooter)) {
+            sendMetadata(shooter, "shoot_arrow", event.getForce());
+        }
     }
 
     @EventHandler
