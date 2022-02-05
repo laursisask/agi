@@ -149,13 +149,6 @@ public class SumoGameSession implements Listener, GameSession {
         spawnLocations[1].setWorld(world);
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            if (state == GameState.PLAYING) {
-                endGame(null);
-                plugin.getLogger().info("Game ended due to timeout");
-            }
-        }, MAX_DURATION);
     }
 
     public GameState getState() {
@@ -215,6 +208,13 @@ public class SumoGameSession implements Listener, GameSession {
             randomTeleportTask = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
                     this::randomTeleportTick, 40, 1);
         }
+
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+            if (state == GameState.PLAYING) {
+                endGame(null);
+                plugin.getLogger().info("Game ended due to timeout");
+            }
+        }, MAX_DURATION);
 
         state = GameState.PLAYING;
     }
