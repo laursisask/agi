@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -247,6 +248,7 @@ public class ClassicGameSession implements Listener, GameSession {
         EntityDamageByEntityEvent.getHandlerList().unregister(this);
         EntityDamageEvent.getHandlerList().unregister(this);
         EntityShootBowEvent.getHandlerList().unregister(this);
+        PlayerFishEvent.getHandlerList().unregister(this);
 
         if (winner == null) {
             for (Player player : players) {
@@ -355,6 +357,15 @@ public class ClassicGameSession implements Listener, GameSession {
         if (hasPlayer(shooter)) {
             sendMetadata(shooter, "shoot_arrow", event.getForce());
         }
+    }
+
+    @EventHandler
+    public void onPlayerFish(PlayerFishEvent event) {
+        if (state != GameState.PLAYING) return;
+        if (event.getState() != PlayerFishEvent.State.FISHING) return;
+        if (!hasPlayer(event.getPlayer())) return;
+
+        sendMetadata(event.getPlayer(), "fishing_rod_used", 1);
     }
 
     @EventHandler
