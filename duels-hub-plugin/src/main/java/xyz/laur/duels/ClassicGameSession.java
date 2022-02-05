@@ -340,6 +340,8 @@ public class ClassicGameSession implements Listener, GameSession {
         if (hasPlayer(player) && player.getHealth() - event.getFinalDamage() <= 0) {
             event.setCancelled(true);
             endGame(getOtherPlayer(player));
+
+            plugin.getLogger().info("Game ended due to one player dying");
         }
     }
 
