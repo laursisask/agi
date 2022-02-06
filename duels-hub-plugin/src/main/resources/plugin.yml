@@ -8,7 +8,7 @@ commands:
     usage: /sumo <session ID> <randomization factor> <map name> <random teleport>
   classic:
     description: Joins a classic duels game session
-    usage: /classic <session ID> <map name> <random teleport>
+    usage: /classic <session ID> <map name> <random teleport> <spawn distance>
   games:
     description: Lists all ongoing games
     usage: /games

@@ -29,6 +29,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 import static xyz.laur.duels.ClassicGameSession.GameMap.ARENA;
+import static xyz.laur.duels.ClassicGameSession.GameMap.BACKWOODS;
 import static xyz.laur.duels.ClassicGameSession.MAX_DURATION;
 import static xyz.laur.duels.TestHelper.mockServer;
 
@@ -38,6 +39,8 @@ public class ClassicGameSessionTest {
     private ClassicGameSession session;
     private World world;
     private BukkitScheduler scheduler;
+    private SkinChanger skinChanger;
+    private Plugin plugin;
 
     @Before
     public void setUp() {
@@ -45,7 +48,7 @@ public class ClassicGameSessionTest {
 
         sessionManager = new SessionManager();
         invisibilityManager = mock(InvisibilityManager.class);
-        Plugin plugin = mock(Plugin.class);
+        this.plugin = mock(Plugin.class);
         when(plugin.getLogger()).thenReturn(Logger.getGlobal());
 
         Server server = mock(Server.class);
@@ -57,9 +60,10 @@ public class ClassicGameSessionTest {
 
         world = mock(World.class);
 
-        SkinChanger skinChanger = mock(SkinChanger.class);
+        skinChanger = mock(SkinChanger.class);
 
-        session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, ARENA, true);
+        session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, ARENA,
+                true, 1);
     }
 
     @Test
@@ -370,6 +374,78 @@ public class ClassicGameSessionTest {
 
         verify(player1, atLeast(2)).teleport(any(Location.class));
         verify(player2, atLeast(2)).teleport(any(Location.class));
+    }
+
+    @Test
+    public void testSpawnLocationsFullDistance() {
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        ArgumentCaptor<Location> player1Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player1, times(1)).teleport(player1Loc.capture());
+
+        ArgumentCaptor<Location> player2Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player2, times(1)).teleport(player2Loc.capture());
+
+        Location potentialSpawn1 = ARENA.getSpawnLocation1().clone();
+        potentialSpawn1.setWorld(world);
+
+        Location potentialSpawn2 = ARENA.getSpawnLocation2().clone();
+        potentialSpawn2.setWorld(world);
+
+        assertTrue((player1Loc.getValue().equals(potentialSpawn1) && player2Loc.getValue().equals(potentialSpawn2)) ||
+                (player1Loc.getValue().equals(potentialSpawn2) && player2Loc.getValue().equals(potentialSpawn1)));
+    }
+
+    @Test
+    public void testSpawnLocationsHalfDistanceX() {
+        session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, BACKWOODS,
+                true, 0.5F);
+
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        ArgumentCaptor<Location> player1Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player1, times(1)).teleport(player1Loc.capture());
+
+        ArgumentCaptor<Location> player2Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player2, times(1)).teleport(player2Loc.capture());
+
+        Location potentialSpawn1 = new Location(world, 22, 68, -226.5, -90, 0);
+        Location potentialSpawn2 = new Location(world, 57, 68, -226.5, 90, 0);
+
+        assertTrue((player1Loc.getValue().equals(potentialSpawn1) && player2Loc.getValue().equals(potentialSpawn2)) ||
+                (player1Loc.getValue().equals(potentialSpawn2) && player2Loc.getValue().equals(potentialSpawn1)));
+    }
+
+    @Test
+    public void testSpawnLocationsHalfDistanceZ() {
+        session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, ARENA,
+                true, 0.5F);
+
+        Player player1 = createMockPlayer();
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        session.addPlayer(player2);
+
+        ArgumentCaptor<Location> player1Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player1, times(1)).teleport(player1Loc.capture());
+
+        ArgumentCaptor<Location> player2Loc = ArgumentCaptor.forClass(Location.class);
+        verify(player2, times(1)).teleport(player2Loc.capture());
+
+        Location potentialSpawn1 = new Location(world, 43.5, 71, -78.5, 0, 0);
+        Location potentialSpawn2 = new Location(world, 43.5, 71, -44.5, -180, 0);
+
+        assertTrue((player1Loc.getValue().equals(potentialSpawn1) && player2Loc.getValue().equals(potentialSpawn2)) ||
+                (player1Loc.getValue().equals(potentialSpawn2) && player2Loc.getValue().equals(potentialSpawn1)));
     }
 
     protected Player createMockPlayer() {

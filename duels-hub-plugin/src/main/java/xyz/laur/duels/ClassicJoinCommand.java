@@ -31,20 +31,21 @@ public class ClassicJoinCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length != 3) {
+        if (args.length != 4) {
             return false;
         }
 
         String sessionName = args[0];
         ClassicGameSession.GameMap map = ClassicGameSession.GameMap.fromName(args[1]);
         boolean randomTeleport = Boolean.parseBoolean(args[2]);
+        float spawnDistance = Float.parseFloat(args[3]);
 
         ClassicGameSession session = (ClassicGameSession) sessionManager.getByName(sessionName);
 
         if (session == null) {
             plugin.getLogger().info("Creating new classic session");
             session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
-                    map, randomTeleport);
+                    map, randomTeleport, spawnDistance);
             sessionManager.addSession(sessionName, session);
         }
 
