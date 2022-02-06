@@ -372,36 +372,6 @@ public class ClassicGameSessionTest {
         verify(player2, atLeast(2)).teleport(any(Location.class));
     }
 
-    @Test
-    public void testMovementMetadata() {
-        Player player1 = createMockPlayer();
-        when(player1.getLocation()).thenReturn(new Location(world, 10, 20, 30));
-        session.addPlayer(player1);
-
-        Player player2 = createMockPlayer();
-        when(player2.getLocation()).thenReturn(new Location(world, 10, 20, 50));
-        session.addPlayer(player2);
-
-        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
-        verify(scheduler, times(1)).scheduleSyncRepeatingTask(any(), task.capture(), eq(0L), eq(10L));
-
-        // Without change to location there should be no metadata sent
-        for (int i = 0; i < 20; i++) {
-            task.getValue().run();
-        }
-
-        verify(player1, never()).sendMessage(contains("distance_change"));
-        verify(player2, never()).sendMessage(contains("distance_change"));
-
-        // Player 2 moves closer to player 1
-        when(player2.getLocation()).thenReturn(new Location(world, 10, 20, 40));
-        task.getValue().run();
-
-        verify(player1, never()).sendMessage(contains("distance_change"));
-        verify(player2, times(1)).sendMessage(contains("distance_change"));
-        verify(player2, times(1)).sendMessage("metadata:distance_change:-10.00000");
-    }
-
     protected Player createMockPlayer() {
         Player player = mock(Player.class);
         PlayerInventory inventory = mock(PlayerInventory.class);

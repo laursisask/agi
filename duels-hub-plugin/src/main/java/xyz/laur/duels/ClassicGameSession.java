@@ -135,11 +135,9 @@ public class ClassicGameSession implements Listener, GameSession {
     private final SkinChanger skinChanger;
     private final Plugin plugin;
     private final Location[] spawnLocations;
-    private final Map<Player, Location> lastLocations = new HashMap<>();
     private static final Random random = new Random();
 
     private int randomTeleportTask;
-    private int movementMetadataTask;
 
     public ClassicGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
                               SkinChanger skinChanger, Plugin plugin, GameMap map, boolean randomTeleport) {
@@ -221,10 +219,6 @@ public class ClassicGameSession implements Listener, GameSession {
                     this::randomTeleportTick, 40, 1);
         }
 
-        players.forEach(p -> lastLocations.put(p, p.getLocation()));
-        movementMetadataTask = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
-                this::movementMetadataTick, 0, 10);
-
         // Postpone changing skin because sometimes it makes players invisible if set
         // at the same time as players are teleported
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
@@ -273,7 +267,6 @@ public class ClassicGameSession implements Listener, GameSession {
             plugin.getServer().getScheduler().cancelTask(randomTeleportTask);
         }
 
-        plugin.getServer().getScheduler().cancelTask(movementMetadataTask);
     }
 
     public boolean hasPlayer(Player player) {
@@ -341,27 +334,6 @@ public class ClassicGameSession implements Listener, GameSession {
             newLocation.setPitch(newLocation.getPitch() + (random.nextFloat() - 0.5F) * 90);
             newLocation.setYaw(newLocation.getYaw() + (random.nextFloat() - 0.5F) * 180);
             player.teleport(newLocation);
-        }
-    }
-
-    protected void movementMetadataTick() {
-        if (state != GameState.PLAYING) {
-            throw new IllegalStateException("Game was not in playing state but movement tick was called");
-        }
-
-        for (Player player : players) {
-            Player otherPlayer = getOtherPlayer(player);
-
-            Location otherPrevLoc = lastLocations.get(otherPlayer);
-
-            double distanceBefore = lastLocations.get(player).distance(otherPrevLoc);
-            double distanceNow = player.getLocation().distance(otherPrevLoc);
-
-            if (distanceBefore > 10 && Math.abs(distanceNow - distanceBefore) > 0.01) {
-                sendMetadata(player, "distance_change", distanceNow - distanceBefore);
-            }
-
-            lastLocations.put(player, player.getLocation());
         }
     }
 
