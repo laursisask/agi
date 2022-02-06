@@ -27,62 +27,62 @@ public class ClassicGameSession implements Listener, GameSession {
     public enum GameMap {
         ARENA(
                 "Arena",
-                new Location(null, 43.5, 68, -95.5, 0, 0),
-                new Location(null, 43.5, 68, -27.5, -180, 0),
+                new Location(null, 43.5, 71, -95.5, 0, 0),
+                new Location(null, 43.5, 71, -27.5, -180, 0),
                 new EmblemPosition[]{new EmblemPosition(43, 80, -96, true), new EmblemPosition(43, 80, -28, true)}
         ),
         BACKWOODS(
                 "Backwoods",
-                new Location(null, 4.5, 65, -226.5, -90, 0),
-                new Location(null, 74.5, 65, -226.5, 90, 0),
+                new Location(null, 4.5, 68, -226.5, -90, 0),
+                new Location(null, 74.5, 68, -226.5, 90, 0),
                 new EmblemPosition[]{new EmblemPosition(1, 85, -226, false), new EmblemPosition(78, 85, -226, false)}
         ),
         FIGHT_NIGHT(
                 "Fight Night",
-                new Location(null, -169.5, 41, -275.5, 0, 0),
-                new Location(null, -169.5, 41, -205.5, -180, 0),
+                new Location(null, -169.5, 44, -275.5, 0, 0),
+                new Location(null, -169.5, 44, -205.5, -180, 0),
                 new EmblemPosition[]{new EmblemPosition(-170, 66, -279, true), new EmblemPosition(-170, 66, -203, true)}
         ),
         FRACTAL(
                 "Fractal",
-                new Location(null, -182.5, 185, -266.5, 0, 0),
-                new Location(null, -182.5, 185, -196.5, 180, 0),
+                new Location(null, -182.5, 188, -266.5, 0, 0),
+                new Location(null, -182.5, 188, -196.5, 180, 0),
                 new EmblemPosition[]{new EmblemPosition(-183, 208, -271, true), new EmblemPosition(-183, 208, -193, true)}
         ),
         HIGHSET(
                 "Highset",
-                new Location(null, -159.5, 72, -11.5, -90, 0),
-                new Location(null, -89.5, 72, -11.5, 90, 0),
+                new Location(null, -159.5, 75, -11.5, -90, 0),
+                new Location(null, -89.5, 75, -11.5, 90, 0),
                 new EmblemPosition[]{new EmblemPosition(-164, 90, -12, false), new EmblemPosition(-87, 90, -12, false)}
         ),
         MUSEUM(
                 "Museum",
-                new Location(null, -292.5, 71, 7.5, -180, 0),
-                new Location(null, -292.5, 71, -62.5, 0, 0),
+                new Location(null, -292.5, 74, 7.5, -180, 0),
+                new Location(null, -292.5, 74, -62.5, 0, 0),
                 new EmblemPosition[]{new EmblemPosition(-293, 94, 10, true), new EmblemPosition(-293, 94, -65, true)}
         ),
         NEON(
                 "Neon",
-                new Location(null, 103.5, 45, 140.5, 90, 0),
-                new Location(null, 33.5, 45, 140.5, -90, 0),
+                new Location(null, 103.5, 48, 140.5, 90, 0),
+                new Location(null, 33.5, 48, 140.5, -90, 0),
                 new EmblemPosition[]{new EmblemPosition(106, 60, 140, false), new EmblemPosition(30, 60, 140, false)}
         ),
         REEF(
                 "Reef",
-                new Location(null, 189.5, 11, -109.5, 0, 0),
-                new Location(null, 189.5, 11, -39.5, 180, 0),
+                new Location(null, 189.5, 14, -109.5, 0, 0),
+                new Location(null, 189.5, 14, -39.5, 180, 0),
                 new EmblemPosition[]{new EmblemPosition(189, 40, -113, true), new EmblemPosition(189, 40, -37, true)}
         ),
         SKYPORT(
                 "Skyport",
-                new Location(null, -120.5, 25, 181.5, -180, 0),
-                new Location(null, -120.5, 25, 111.5, 0, 0),
+                new Location(null, -120.5, 28, 181.5, -180, 0),
+                new Location(null, -120.5, 28, 111.5, 0, 0),
                 new EmblemPosition[]{new EmblemPosition(-121, 44, 185, true), new EmblemPosition(-121, 44, 107, true)}
         ),
         SPIKEROCK_BAY(
                 "Spikerock Bay",
-                new Location(null, -262.5, 15, 176.5, 180, 0),
-                new Location(null, -262.5, 15, 106.5, 0, 0),
+                new Location(null, -262.5, 18, 176.5, 180, 0),
+                new Location(null, -262.5, 18, 106.5, 0, 0),
                 new EmblemPosition[]{new EmblemPosition(-264, 31, 179, true), new EmblemPosition(-264, 31, 103, true)}
         );
 
