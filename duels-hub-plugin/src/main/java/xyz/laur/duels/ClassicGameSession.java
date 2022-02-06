@@ -19,7 +19,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.projectiles.ProjectileSource;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class ClassicGameSession implements Listener, GameSession {
     public static final long MAX_DURATION = 9600; // 8 minutes
@@ -134,13 +136,14 @@ public class ClassicGameSession implements Listener, GameSession {
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
     private final Plugin plugin;
-    private final Location[] spawnLocations;
+    private final Location[] spawnLocations = new Location[2];
     private static final Random random = new Random();
 
     private int randomTeleportTask;
 
     public ClassicGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                              SkinChanger skinChanger, Plugin plugin, GameMap map, boolean randomTeleport) {
+                              SkinChanger skinChanger, Plugin plugin, GameMap map, boolean randomTeleport,
+                              float spawnDistance) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
@@ -148,17 +151,7 @@ public class ClassicGameSession implements Listener, GameSession {
         this.map = map;
         this.randomTeleport = randomTeleport;
 
-        spawnLocations = new Location[2];
-        if (random.nextBoolean()) {
-            spawnLocations[0] = map.spawnLocation1.clone();
-            spawnLocations[1] = map.spawnLocation2.clone();
-        } else {
-            spawnLocations[0] = map.spawnLocation2.clone();
-            spawnLocations[1] = map.spawnLocation1.clone();
-        }
-
-        spawnLocations[0].setWorld(world);
-        spawnLocations[1].setWorld(world);
+        setSpawnLocations(world, spawnDistance);
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
@@ -271,6 +264,43 @@ public class ClassicGameSession implements Listener, GameSession {
 
     public boolean hasPlayer(Player player) {
         return players.contains(player);
+    }
+
+    protected void setSpawnLocations(World world, float spawnDistance) {
+        if (random.nextBoolean()) {
+            spawnLocations[0] = map.spawnLocation1.clone();
+            spawnLocations[1] = map.spawnLocation2.clone();
+        } else {
+            spawnLocations[0] = map.spawnLocation2.clone();
+            spawnLocations[1] = map.spawnLocation1.clone();
+        }
+
+        spawnLocations[0].setWorld(world);
+        spawnLocations[1].setWorld(world);
+
+        if (Math.abs(spawnLocations[0].getX() - spawnLocations[1].getX()) < 1) {
+            double maxDistanceFromCenter = Math.abs(spawnLocations[0].getZ() - spawnLocations[1].getZ()) / 2;
+            double offsetFromOriginal = (1 - spawnDistance) * maxDistanceFromCenter;
+
+            if (spawnLocations[0].getZ() < spawnLocations[1].getZ()) {
+                spawnLocations[0].setZ(spawnLocations[0].getZ() + offsetFromOriginal);
+                spawnLocations[1].setZ(spawnLocations[1].getZ() - offsetFromOriginal);
+            } else {
+                spawnLocations[0].setZ(spawnLocations[0].getZ() - offsetFromOriginal);
+                spawnLocations[1].setZ(spawnLocations[1].getZ() + offsetFromOriginal);
+            }
+        } else {
+            double maxDistanceFromCenter = Math.abs(spawnLocations[0].getX() - spawnLocations[1].getX()) / 2;
+            double offsetFromOriginal = (1 - spawnDistance) * maxDistanceFromCenter;
+
+            if (spawnLocations[0].getX() < spawnLocations[1].getX()) {
+                spawnLocations[0].setX(spawnLocations[0].getX() + offsetFromOriginal);
+                spawnLocations[1].setX(spawnLocations[1].getX() - offsetFromOriginal);
+            } else {
+                spawnLocations[0].setX(spawnLocations[0].getX() - offsetFromOriginal);
+                spawnLocations[1].setX(spawnLocations[1].getX() + offsetFromOriginal);
+            }
+        }
     }
 
     protected void giveItems(Player player) {

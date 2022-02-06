@@ -53,7 +53,7 @@ public class ClassicJoinCommandTest {
         Player sender1 = mock(Player.class);
         when(sender1.getInventory()).thenReturn(inventory);
 
-        assertTrue(command.onCommand(sender1, null, "classic", new String[]{"abc123", "arena", "true"}));
+        assertTrue(command.onCommand(sender1, null, "classic", new String[]{"abc123", "arena", "true", "0.5"}));
         ClassicGameSession session = (ClassicGameSession) sessionManager.getByName("abc123");
         assertTrue(session.hasPlayer(sender1));
         assertEquals(ARENA, session.getMap());
@@ -62,7 +62,7 @@ public class ClassicJoinCommandTest {
         Player sender2 = mock(Player.class);
         when(sender2.getInventory()).thenReturn(inventory);
 
-        assertTrue(command.onCommand(sender2, null, "classic", new String[]{"abc123", "arena", "true"}));
+        assertTrue(command.onCommand(sender2, null, "classic", new String[]{"abc123", "arena", "true", "0.5"}));
         assertTrue(session.hasPlayer(sender2));
     }
 }
