@@ -6,10 +6,15 @@ import time
 import cv2
 import requests
 import torch
+from requests.adapters import HTTPAdapter
 from terminator import TerminatorSumoHypixel
+from urllib3.util import Retry
 
 from duels_training.sumo_demo_utils import PolicyState
 from duels_training.sumo_model import SumoModel
+
+http = requests.Session()
+http.mount("https://", HTTPAdapter(max_retries=Retry(total=7, backoff_factor=0.1, status_forcelist={429})))
 
 
 class Recorder:
@@ -27,7 +32,7 @@ class Recorder:
 
 
 def get_player_uuid(username):
-    response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{username}")
+    response = http.get(f"https://api.mojang.com/users/profiles/minecraft/{username}")
     response.raise_for_status()
 
     # When player does not exist, 204 is returned
@@ -55,8 +60,8 @@ def get_player_stats(username, api_key):
     if player_uuid is None:
         return None
 
-    response = requests.get("https://api.hypixel.net/player", params={"uuid": player_uuid},
-                            headers={"API-Key": api_key})
+    response = http.get("https://api.hypixel.net/player", params={"uuid": player_uuid},
+                        headers={"API-Key": api_key})
     response.raise_for_status()
 
     retrieved_keys = ["current_winstreak", "rounds_played", "sumo_duel_wins", "sumo_duel_rounds_played"]
