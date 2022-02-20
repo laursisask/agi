@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ClassicGameSession implements Listener, GameSession {
-    public static final long MAX_DURATION = 9600; // 8 minutes
+    public static final long MAX_DURATION = 3600; // 3 minutes
 
     public enum GameMap {
         ARENA(
