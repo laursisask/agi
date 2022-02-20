@@ -18,10 +18,16 @@ import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.*;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 public class DuelsHubPlugin extends JavaPlugin implements Listener {
     private SessionManager sessionManager;
     private InvisibilityManager invisibilityManager;
     private EmblemRenderer emblemRenderer;
+    private Map<ClassicGameSession.GameMap, MapBarrier> barriers;
 
     @Override
     public void onEnable() {
@@ -42,9 +48,12 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
 
         SkinChanger skinChanger = new SkinChanger(this);
 
+        barriers = Arrays.stream(ClassicGameSession.GameMap.values())
+                .collect(Collectors.toMap(Function.identity(), map -> new MapBarrier(this, map, classicWorld)));
+
         getCommand("sumo").setExecutor(new SumoJoinCommand(sessionManager, invisibilityManager, skinChanger,
                 this, sumoWorld));
-        getCommand("classic").setExecutor(new ClassicJoinCommand(sessionManager, invisibilityManager, skinChanger,
+        getCommand("classic").setExecutor(new ClassicJoinCommand(sessionManager, invisibilityManager, skinChanger, barriers,
                 this, classicWorld));
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
@@ -61,7 +70,13 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        emblemRenderer.stop();
+        if (emblemRenderer != null) {
+            emblemRenderer.stop();
+        }
+
+        if (barriers != null) {
+            barriers.values().forEach(MapBarrier::removeBarrier);
+        }
     }
 
     @EventHandler

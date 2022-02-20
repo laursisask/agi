@@ -21,6 +21,7 @@ import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class ClassicGameSession implements Listener, GameSession {
@@ -136,6 +137,8 @@ public class ClassicGameSession implements Listener, GameSession {
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
     private final Plugin plugin;
+    private final float spawnDistance;
+    private final Map<GameMap, MapBarrier> barriers;
     private final Location[] spawnLocations = new Location[2];
     private static final Random random = new Random();
 
@@ -143,13 +146,15 @@ public class ClassicGameSession implements Listener, GameSession {
 
     public ClassicGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
                               SkinChanger skinChanger, Plugin plugin, GameMap map, boolean randomTeleport,
-                              float spawnDistance) {
+                              float spawnDistance, Map<GameMap, MapBarrier> barriers) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.map = map;
         this.randomTeleport = randomTeleport;
+        this.spawnDistance = spawnDistance;
+        this.barriers = barriers;
 
         setSpawnLocations(world, spawnDistance);
 
@@ -226,6 +231,8 @@ public class ClassicGameSession implements Listener, GameSession {
                 plugin.getLogger().info("Classic duel game ended due to timeout");
             }
         }, MAX_DURATION);
+
+        barriers.get(map).update(spawnDistance);
 
         state = GameState.PLAYING;
     }

@@ -41,6 +41,7 @@ public class ClassicGameSessionTest {
     private BukkitScheduler scheduler;
     private SkinChanger skinChanger;
     private Plugin plugin;
+    private Map<ClassicGameSession.GameMap, MapBarrier> barriers;
 
     @Before
     public void setUp() {
@@ -62,8 +63,13 @@ public class ClassicGameSessionTest {
 
         skinChanger = mock(SkinChanger.class);
 
+        barriers = new HashMap<>();
+        for (ClassicGameSession.GameMap map : ClassicGameSession.GameMap.values()) {
+            barriers.put(map, mock(MapBarrier.class));
+        }
+
         session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, ARENA,
-                true, 1);
+                true, 1, barriers);
     }
 
     @Test
@@ -403,7 +409,7 @@ public class ClassicGameSessionTest {
     @Test
     public void testSpawnLocationsHalfDistanceX() {
         session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, BACKWOODS,
-                true, 0.5F);
+                true, 0.5F, barriers);
 
         Player player1 = createMockPlayer();
         session.addPlayer(player1);
@@ -427,7 +433,7 @@ public class ClassicGameSessionTest {
     @Test
     public void testSpawnLocationsHalfDistanceZ() {
         session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, ARENA,
-                true, 0.5F);
+                true, 0.5F, barriers);
 
         Player player1 = createMockPlayer();
         session.addPlayer(player1);
