@@ -8,18 +8,23 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Map;
+
 public class ClassicJoinCommand implements CommandExecutor {
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
+    private final Map<ClassicGameSession.GameMap, MapBarrier> barriers;
     private final Plugin plugin;
     private final World world;
 
     public ClassicJoinCommand(SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                              SkinChanger skinChanger, Plugin plugin, World world) {
+                              SkinChanger skinChanger, Map<ClassicGameSession.GameMap, MapBarrier> barriers,
+                              Plugin plugin, World world) {
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
+        this.barriers = barriers;
         this.plugin = plugin;
         this.world = world;
     }
@@ -45,7 +50,7 @@ public class ClassicJoinCommand implements CommandExecutor {
         if (session == null) {
             plugin.getLogger().info("Creating new classic session");
             session = new ClassicGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
-                    map, randomTeleport, spawnDistance);
+                    map, randomTeleport, spawnDistance, barriers);
             sessionManager.addSession(sessionName, session);
         }
 

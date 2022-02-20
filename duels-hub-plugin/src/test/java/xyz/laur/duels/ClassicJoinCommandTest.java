@@ -10,6 +10,8 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
@@ -23,6 +25,7 @@ public class ClassicJoinCommandTest {
     private ClassicJoinCommand command;
     private SessionManager sessionManager;
     private InvisibilityManager invisibilityManager;
+    private Map<ClassicGameSession.GameMap, MapBarrier> barriers;
 
     @Before
     public void setUp() {
@@ -44,7 +47,12 @@ public class ClassicJoinCommandTest {
 
         SkinChanger skinChanger = mock(SkinChanger.class);
 
-        command = new ClassicJoinCommand(sessionManager, invisibilityManager, skinChanger, plugin, world);
+        barriers = new HashMap<>();
+        for (ClassicGameSession.GameMap map : ClassicGameSession.GameMap.values()) {
+            barriers.put(map, mock(MapBarrier.class));
+        }
+
+        command = new ClassicJoinCommand(sessionManager, invisibilityManager, skinChanger, barriers, plugin, world);
     }
 
     @Test
