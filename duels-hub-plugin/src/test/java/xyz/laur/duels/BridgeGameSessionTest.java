@@ -141,14 +141,18 @@ public class BridgeGameSessionTest {
         verify(player2, times(1)).teleport(any(Location.class));
 
         // Player falling to void
+        verify(player1, times(0)).sendMessage(startsWith("metadata:fell_to_void"));
         Location from = new Location(world, 137, 86, 54);
         Location to = new Location(world, 132, 76, 33);
         session.onMove(new PlayerMoveEvent(player1, from, to));
         assertEquals(GameState.PLAYING, session.getState());
         verify(player1, times(3)).teleport(any(Location.class));
         verify(player2, times(1)).teleport(any(Location.class));
+        verify(player1, times(1)).sendMessage("metadata:fell_to_void:1.00000");
 
         // Player jumping to their own hole
+        verify(player1, times(0)).sendMessage(startsWith("metadata:fell_to_own_hole"));
+
         Location ownHole = session.getPlayerTeam(player1) == BLUE ?
                 TREEHOUSE.getBlueHole().clone() : TREEHOUSE.getRedHole().clone();
         ownHole.setWorld(world);
@@ -158,6 +162,7 @@ public class BridgeGameSessionTest {
         assertEquals(GameState.PLAYING, session.getState());
         verify(player1, times(4)).teleport(any(Location.class));
         verify(player2, times(1)).teleport(any(Location.class));
+        verify(player1, times(1)).sendMessage("metadata:fell_to_own_hole:1.00000");
 
         verify(player1, times(0)).sendMessage("metadata:round_won:1.00000");
         verify(player1, times(0)).sendMessage("metadata:round_lost:1.00000");
