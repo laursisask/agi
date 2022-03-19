@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
@@ -247,9 +248,11 @@ public class ClassicGameSession implements Listener, GameSession {
         EntityDamageEvent.getHandlerList().unregister(this);
         EntityShootBowEvent.getHandlerList().unregister(this);
         PlayerFishEvent.getHandlerList().unregister(this);
+        BlockBreakEvent.getHandlerList().unregister(this);
 
         if (winner == null) {
             for (Player player : players) {
+                sendMetadata(player, "timeout", 1);
                 player.sendMessage("You lost");
             }
         } else {
@@ -402,6 +405,13 @@ public class ClassicGameSession implements Listener, GameSession {
         if (!hasPlayer(event.getPlayer())) return;
 
         sendMetadata(event.getPlayer(), "fishing_rod_used", 1);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (hasPlayer(event.getPlayer())) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

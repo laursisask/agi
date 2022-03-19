@@ -42,6 +42,12 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
         classicWorld.setSpawnFlags(false, false);
         preloadClassicChunks(classicWorld);
 
+        World bridgeWorld = new WorldCreator("bridge").createWorld();
+        bridgeWorld.setThundering(false);
+        bridgeWorld.setStorm(false);
+        bridgeWorld.setSpawnFlags(false, false);
+        preloadBridgeChunks(bridgeWorld);
+
         sessionManager = new SessionManager();
         invisibilityManager = new InvisibilityManager(sessionManager, getServer());
         invisibilityManager.update();
@@ -55,6 +61,7 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
                 this, sumoWorld));
         getCommand("classic").setExecutor(new ClassicJoinCommand(sessionManager, invisibilityManager, skinChanger, barriers,
                 this, classicWorld));
+        getCommand("bridge").setExecutor(new BridgeJoinCommand(sessionManager, invisibilityManager, skinChanger, this, bridgeWorld));
         getCommand("games").setExecutor(new GamesCommand(sessionManager));
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -105,7 +112,9 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onBreakBlock(BlockBreakEvent event) {
-        if (!event.getPlayer().isOp()) {
+        GameSession session = sessionManager.getPlayerSession(event.getPlayer());
+
+        if (!event.getPlayer().isOp() && session == null) {
             event.setCancelled(true);
         }
     }
@@ -177,6 +186,22 @@ public class DuelsHubPlugin extends JavaPlugin implements Listener {
             Location spawnLoc2 = map.getSpawnLocation2().clone();
             spawnLoc2.setWorld(world);
             if (!spawnLoc2.getChunk().load()) {
+                throw new RuntimeException("Failed to preload chunk");
+            }
+        }
+    }
+
+    private void preloadBridgeChunks(World world) {
+        for (BridgeMap map : BridgeMap.values()) {
+            Location spawnLocBlue = map.getBlueSpawn().clone();
+            spawnLocBlue.setWorld(world);
+            if (!spawnLocBlue.getChunk().load()) {
+                throw new RuntimeException("Failed to preload chunk");
+            }
+
+            Location spawnLocRed = map.getRedSpawn().clone();
+            spawnLocRed.setWorld(world);
+            if (!spawnLocRed.getChunk().load()) {
                 throw new RuntimeException("Failed to preload chunk");
             }
         }
