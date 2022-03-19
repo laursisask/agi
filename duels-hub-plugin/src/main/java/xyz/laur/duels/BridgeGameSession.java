@@ -328,6 +328,7 @@ public class BridgeGameSession implements Listener, GameSession {
 
         if (event.getTo().getY() < map.getMinY()) {
             plugin.getLogger().info("Player fell to void");
+            sendMetadata(player, "fell_to_void", 1);
             spawnPlayer(player);
             return;
         }
@@ -341,6 +342,7 @@ public class BridgeGameSession implements Listener, GameSession {
 
             if (distanceToOwn < 10) {
                 plugin.getLogger().info("Player fell to their own hole, respawning them");
+                sendMetadata(player, "fell_to_own_hole", 1);
                 spawnPlayer(player);
                 return;
             }
