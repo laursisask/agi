@@ -404,6 +404,51 @@ public class BridgeGameSessionTest {
         assertTrue(event2.isCancelled());
     }
 
+    @Test
+    public void testMovementMetadata() {
+        Player player1 = createMockPlayer();
+        when(player1.getLocation()).thenReturn(new Location(world, 10, 20, 30));
+        session.addPlayer(player1);
+
+        Player player2 = createMockPlayer();
+        when(player2.getLocation()).thenReturn(new Location(world, 5, 80, 15));
+        session.addPlayer(player2);
+
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler, times(1)).scheduleSyncRepeatingTask(any(), task.capture(), eq(0L), eq(10L));
+
+        // Without change to location there should be no metadata sent
+        for (int i = 0; i < 20; i++) {
+            task.getValue().run();
+        }
+
+        verify(player1, never()).sendMessage(contains("distance_change"));
+        verify(player2, never()).sendMessage(contains("distance_change"));
+
+        // Player 2 moves closer to the hole
+        when(player2.getLocation()).thenReturn(new Location(world, 7, 85, 10));
+        task.getValue().run();
+
+        verify(player1, never()).sendMessage(contains("distance_change"));
+        verify(player2, times(1)).sendMessage(contains("distance_change"));
+
+        if (session.getPlayerTeam(player2) == BLUE) {
+            // Red hole is at (33, 89, 0)
+            // Move from (5, 80, 15) to (7, 85, 10)
+            // Distance before: 33.015148038438355
+            // Distance after: 28.142494558940577
+            // Change: -4.872653479497778
+            verify(player2, times(1)).sendMessage("metadata:distance_change:-4.87265");
+        } else {
+            // Blue hole is at (-33, 89, 0)
+            // Move from (5, 80, 15) to (7, 85, 10)
+            // Distance before 41.83300132670378
+            // Distance after: 41.42463035441596
+            // Change: -0.4083709722878197
+            verify(player2, times(1)).sendMessage("metadata:distance_change:-0.40837");
+        }
+    }
+
     protected Player createMockPlayer() {
         Player player = mock(Player.class);
         PlayerInventory inventory = mock(PlayerInventory.class);

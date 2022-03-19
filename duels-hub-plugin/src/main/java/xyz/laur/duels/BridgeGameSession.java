@@ -34,12 +34,15 @@ public class BridgeGameSession implements Listener, GameSession {
     private final List<Player> players = new ArrayList<>();
     private final Map<Player, Team> playerTeams = new HashMap<>();
     private final Map<Player, Integer> points = new HashMap<>();
+    private final Map<Player, Location> lastLocations = new HashMap<>();
     private final BridgeMap map;
     private final World world;
     private final SessionManager sessionManager;
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
     private final Plugin plugin;
+
+    private int movementMetadataTask;
 
     public BridgeGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
                              SkinChanger skinChanger, Plugin plugin, BridgeMap map) {
@@ -109,6 +112,10 @@ public class BridgeGameSession implements Listener, GameSession {
             player.sendMessage("Game started");
         }
 
+        players.forEach(p -> lastLocations.put(p, p.getLocation()));
+        movementMetadataTask = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin,
+                this::movementMetadataTick, 0, 10);
+
         // Postpone changing skin because sometimes it makes players invisible if set
         // at the same time as players are teleported
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
@@ -123,6 +130,29 @@ public class BridgeGameSession implements Listener, GameSession {
                 plugin.getLogger().info("The Bridge duel game ended due to timeout");
             }
         }, MAX_DURATION);
+    }
+
+    protected void movementMetadataTick() {
+        if (state != GameState.PLAYING) {
+            throw new IllegalStateException("Game was not in playing state but movement tick was called");
+        }
+
+        for (Player player : players) {
+            Location otherHole = playerTeams.get(player) == Team.BLUE ?
+                    map.getRedHole().clone() : map.getBlueHole().clone();
+            otherHole.setWorld(world);
+
+            double distanceBefore = lastLocations.get(player).distance(otherHole);
+            double distanceNow = player.getLocation().distance(otherHole);
+
+            double change = Math.abs(distanceNow - distanceBefore);
+
+            if (change > 0.01 && change < 5) {
+                sendMetadata(player, "distance_change", distanceNow - distanceBefore);
+            }
+
+            lastLocations.put(player, player.getLocation());
+        }
     }
 
     protected void spawnPlayer(Player player) {
@@ -161,6 +191,8 @@ public class BridgeGameSession implements Listener, GameSession {
         PlayerMoveEvent.getHandlerList().unregister(this);
         BlockBreakEvent.getHandlerList().unregister(this);
         BlockPlaceEvent.getHandlerList().unregister(this);
+
+        plugin.getServer().getScheduler().cancelTask(movementMetadataTask);
 
         for (Player player : players) {
             player.getInventory().clear();
@@ -302,7 +334,8 @@ public class BridgeGameSession implements Listener, GameSession {
 
         Block blockDown = event.getTo().getBlock().getRelative(BlockFace.DOWN);
         if (blockDown.getType() == Material.BARRIER) {
-            Location ownHole = playerTeams.get(player) == Team.BLUE ? map.getBlueHole() : map.getRedHole();
+            Location ownHole = playerTeams.get(player) == Team.BLUE ?
+                    map.getBlueHole().clone() : map.getRedHole().clone();
             ownHole.setWorld(world);
             double distanceToOwn = ownHole.distance(event.getTo());
 
@@ -312,7 +345,8 @@ public class BridgeGameSession implements Listener, GameSession {
                 return;
             }
 
-            Location otherHole = playerTeams.get(player) == Team.BLUE ? map.getRedHole() : map.getBlueHole();
+            Location otherHole = playerTeams.get(player) == Team.BLUE ?
+                    map.getRedHole().clone() : map.getBlueHole().clone();
             otherHole.setWorld(world);
             double distanceToOther = otherHole.distance(event.getTo());
 
