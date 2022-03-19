@@ -61,6 +61,40 @@ public class TestHelper {
         };
 
         Enchantment.registerEnchantment(protection);
+
+        Enchantment efficiency = new Enchantment(32) {
+            @Override
+            public String getName() {
+                return "DIG_SPEED";
+            }
+
+            @Override
+            public int getMaxLevel() {
+                return 5;
+            }
+
+            @Override
+            public int getStartLevel() {
+                return 1;
+            }
+
+            @Override
+            public EnchantmentTarget getItemTarget() {
+                return EnchantmentTarget.TOOL;
+            }
+
+            @Override
+            public boolean conflictsWith(Enchantment other) {
+                return false;
+            }
+
+            @Override
+            public boolean canEnchantItem(ItemStack item) {
+                return true;
+            }
+        };
+
+        Enchantment.registerEnchantment(efficiency);
     }
 
 }

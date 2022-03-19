@@ -5,6 +5,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -228,6 +229,7 @@ public class SumoGameSession implements Listener, GameSession {
         PlayerMoveEvent.getHandlerList().unregister(this);
         EntityDamageByEntityEvent.getHandlerList().unregister(this);
         EntityDamageEvent.getHandlerList().unregister(this);
+        BlockBreakEvent.getHandlerList().unregister(this);
 
         if (winner == null) {
             for (Player player : players) {
@@ -327,6 +329,13 @@ public class SumoGameSession implements Listener, GameSession {
         if (hasPlayer(attacker) && hasPlayer(target)) {
             sendMetadata(attacker, "hits_done", 1);
             sendMetadata(target, "hits_received", 1);
+        }
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (hasPlayer(event.getPlayer())) {
+            event.setCancelled(true);
         }
     }
 

@@ -9,6 +9,9 @@ commands:
   classic:
     description: Joins a classic duels game session
     usage: /classic <session ID> <map name> <random teleport> <spawn distance>
+  bridge:
+    description: Joins a bridge game session
+    usage: /bridge <session ID> <map name>
   games:
     description: Lists all ongoing games
     usage: /games
