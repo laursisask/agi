@@ -27,7 +27,7 @@ public class MapBarrier {
         Vector center = map.getSpawnLocation1().toVector().add(map.getSpawnLocation2().toVector()).multiply(0.5);
         int initialDistanceFromCenter = (int) map.getSpawnLocation1().toVector().distance(center);
 
-        int newMapSize = (int) (7 + spawnDistance * initialDistanceFromCenter);
+        int newMapSize = (int) (3 + spawnDistance * initialDistanceFromCenter);
 
         if (newMapSize != mapSize) {
             removeBarrier();
