@@ -31,18 +31,20 @@ public class BridgeJoinCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length != 2) {
+        if (args.length != 3) {
             return false;
         }
 
         String sessionName = args[0];
         BridgeMap map = BridgeMap.fromName(args[1]);
+        double spawnDistanceFraction = Double.parseDouble(args[2]);
 
         BridgeGameSession session = (BridgeGameSession) sessionManager.getByName(sessionName);
 
         if (session == null) {
             plugin.getLogger().info("Creating new bridge session");
-            session = new BridgeGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, map);
+            session = new BridgeGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin, map,
+                    spawnDistanceFraction);
             sessionManager.addSession(sessionName, session);
         }
 

@@ -21,6 +21,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 
@@ -41,17 +42,19 @@ public class BridgeGameSession implements Listener, GameSession {
     private final InvisibilityManager invisibilityManager;
     private final SkinChanger skinChanger;
     private final Plugin plugin;
+    private final double spawnDistanceFraction;
 
     private int movementMetadataTask;
 
     public BridgeGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                             SkinChanger skinChanger, Plugin plugin, BridgeMap map) {
+                             SkinChanger skinChanger, Plugin plugin, BridgeMap map, double spawnDistanceFraction) {
         this.world = world;
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.map = map;
+        this.spawnDistanceFraction = spawnDistanceFraction;
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
@@ -165,18 +168,46 @@ public class BridgeGameSession implements Listener, GameSession {
         Team playerTeam = playerTeams.get(player);
 
         if (playerTeam == Team.BLUE) {
-            Location blueSpawn = map.getBlueSpawn().clone();
-            blueSpawn.setWorld(world);
-            player.teleport(blueSpawn);
+            player.teleport(getEffectiveSpawn(map.getBlueSpawn()));
         } else {
-            Location redSpawn = map.getRedSpawn().clone();
-            redSpawn.setWorld(world);
-            player.teleport(redSpawn);
+            player.teleport(getEffectiveSpawn(map.getRedSpawn()));
         }
 
         plugin.getLogger().info("Player spawned");
         player.setHealth(player.getMaxHealth());
         giveItems(player, playerTeam);
+    }
+
+    protected Location getEffectiveSpawn(Location original) {
+        Location center = getCenter();
+
+        Vector toFullSpawn = original.toVector().subtract(center.toVector());
+
+        Location spawn = center.clone().add(toFullSpawn.multiply(spawnDistanceFraction));
+        spawn.setY(255);
+
+        while (spawn.getBlock().getRelative(BlockFace.DOWN).getType().isTransparent()) {
+            if (spawn.getY() < 0) {
+                throw new RuntimeException("Did not found a block to spawn player on");
+            }
+
+            spawn.subtract(0, 1, 0);
+        }
+
+        spawn.setPitch(original.getPitch());
+        spawn.setYaw(original.getYaw());
+
+        return spawn;
+    }
+
+    protected Location getCenter() {
+        Location blueSpawn = map.getBlueSpawn().clone();
+        blueSpawn.setWorld(world);
+
+        Location redSpawn = map.getRedSpawn().clone();
+        redSpawn.setWorld(world);
+
+        return blueSpawn.add(redSpawn).multiply(0.5);
     }
 
     public void endGame(Player winner) {
