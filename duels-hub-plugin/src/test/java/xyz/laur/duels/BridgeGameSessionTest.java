@@ -23,6 +23,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.stubbing.Answer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -64,16 +65,36 @@ public class BridgeGameSessionTest {
         when(plugin.getServer()).thenReturn(server);
 
         world = mock(World.class);
-        Block block = mock(Block.class);
-        when(block.getType()).thenReturn(Material.BARRIER);
-        when(block.getRelative(any())).thenReturn(block);
+        Block barrierBlock = mock(Block.class);
+        when(barrierBlock.getType()).thenReturn(Material.BARRIER);
+        when(barrierBlock.getRelative(any())).thenReturn(barrierBlock);
 
-        when(world.getBlockAt(any(Location.class))).thenReturn(block);
+        Block stoneBlock = mock(Block.class);
+        when(stoneBlock.getType()).thenReturn(Material.STONE);
+        when(stoneBlock.getRelative(any())).thenReturn(stoneBlock);
+
+        when(world.getBlockAt(any(Location.class))).then((Answer<Block>) invocation -> {
+            Location location = invocation.getArgumentAt(0, Location.class);
+
+            Location redHole = TREEHOUSE.getRedHole().clone();
+            redHole.setWorld(world);
+
+            Location blueHole = TREEHOUSE.getBlueHole().clone();
+            blueHole.setWorld(world);
+
+            double distanceToHole = Math.min(location.distance(redHole), location.distance(blueHole));
+
+            if (distanceToHole < 6) {
+                return barrierBlock;
+            } else {
+                return stoneBlock;
+            }
+        });
 
         skinChanger = mock(SkinChanger.class);
 
         session = new BridgeGameSession(world, sessionManager, invisibilityManager, skinChanger, plugin,
-                TREEHOUSE);
+                TREEHOUSE, 0.2);
     }
 
     @Test
