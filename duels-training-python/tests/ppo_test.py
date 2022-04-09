@@ -6,7 +6,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from duels_training.incremental_stats_calculator import IncrementalStatsCalculator
-from duels_training.ppo import DataCollector, Trajectory, create_dataset, train_on_batch, collect_data_and_train
+from duels_training.ppo import DataCollector, Trajectory, create_dataset, collect_data_and_train, \
+    compute_gradients
 from tests.gridworld import Gridworld, GridworldPolicy, GridworldModel
 from tests.models import RecurrentModel, PolicyForRecurrentModel
 
@@ -215,10 +216,9 @@ def test_create_dataset_gridworld():
             assert advantages[i].item() == pytest.approx(-2)
 
 
-def test_train_on_batch():
+def test_compute_gradients():
     model = RecurrentModel()
     policy = PolicyForRecurrentModel()
-    optimizer = torch.optim.Adam(model.parameters())
 
     lengths = torch.randint(1, 45, [13, 1])
     max_length = torch.max(lengths).item()
@@ -232,35 +232,40 @@ def test_train_on_batch():
 
     mask = torch.arange(max_length).reshape([1, max_length]).repeat([13, 1]) < lengths_expanded
 
-    batch = (observations, actions, returns, advantages, mask)
-
-    loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
-        torch.device("cpu"),
-        optimizer,
-        model,
-        model,
-        policy,
-        batch,
-        backpropagation_steps=10,
+    (actor_loss, critic_loss, entropy_loss, loss, num_of_samples,
+     last_state, last_state_old) = compute_gradients(
+        device=torch.device("cpu"),
+        model=model,
+        policy=policy,
+        model_old=model,
+        last_state=None,
+        last_state_old=None,
+        observations=observations,
+        actions=actions,
+        returns=returns,
+        advantages=advantages,
+        mask=mask,
         clip_range=0.2,
-        max_grad_norm=5.0,
         value_coefficient=0.5,
         entropy_coefficient=0.01
     )
 
+    assert num_of_samples == torch.sum(mask).item()
+
     # Sanity check
     # Make sure that these values do not change during refactoring
-    assert loss == pytest.approx(0.6, abs=0.1)
-    assert actor_loss == pytest.approx(0.0003, abs=0.0001)
-    assert critic_loss == pytest.approx(1.2, abs=0.1)
-    assert entropy_loss == pytest.approx(-1.4, abs=0.1)
-    assert grad_norm == pytest.approx(0.4, abs=0.1)
+    assert loss / num_of_samples == pytest.approx(0.6, abs=0.1)
+    assert actor_loss / num_of_samples == pytest.approx(-0.02, abs=0.01)
+    assert critic_loss / num_of_samples == pytest.approx(1.2, abs=0.1)
+    assert entropy_loss / num_of_samples == pytest.approx(-1.4, abs=0.1)
+
+    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+    assert grad_norm.item() / num_of_samples == pytest.approx(0.4, abs=0.1)
 
 
-def test_train_on_batch_critic_loss_zero():
+def test_compute_gradients_critic_loss_zero():
     model = RecurrentModel()
     policy = PolicyForRecurrentModel()
-    optimizer = torch.optim.Adam(model.parameters())
 
     lengths = torch.randint(1, 45, [13, 1])
     max_length = torch.max(lengths).item()
@@ -278,24 +283,27 @@ def test_train_on_batch_critic_loss_zero():
     assert returns.shape == (13, max_length)
     returns[~mask] = 100.0
 
-    batch = (observations, actions, returns, advantages, mask)
-
-    loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
-        torch.device("cpu"),
-        optimizer,
-        model,
-        model,
-        policy,
-        batch,
-        backpropagation_steps=10,
+    (actor_loss, critic_loss, entropy_loss, loss, num_of_samples,
+     last_state, last_state_old) = compute_gradients(
+        device=torch.device("cpu"),
+        model=model,
+        policy=policy,
+        model_old=model,
+        last_state=None,
+        last_state_old=None,
+        observations=observations,
+        actions=actions,
+        returns=returns,
+        advantages=advantages,
+        mask=mask,
         clip_range=0.2,
-        max_grad_norm=5.0,
-        value_coefficient=0.5,
+        value_coefficient=5.0,
         entropy_coefficient=0.01
     )
 
-    assert critic_loss == pytest.approx(0, abs=1e-10)
-    assert loss == pytest.approx(actor_loss + 0.01 * entropy_loss, abs=1e-6)
+    assert critic_loss / num_of_samples == pytest.approx(0, abs=1e-10)
+    assert loss / num_of_samples == pytest.approx(actor_loss / num_of_samples + 0.01 * entropy_loss / num_of_samples,
+                                                  abs=1e-6)
 
 
 def test_collect_data_and_train(tmp_path):
@@ -320,7 +328,8 @@ def test_collect_data_and_train(tmp_path):
         reward_stats=IncrementalStatsCalculator(),
         iterations=14,
         steps_per_iteration=4096,
-        batch_size=8,
+        parallel_sequences=8,
+        batch_size=64,
         value_coefficient=0.005,
         entropy_coefficient=0.01,
         clip_range=0.2,
