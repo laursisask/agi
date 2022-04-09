@@ -1,6 +1,5 @@
 import copy
 import logging
-import math
 import os
 import threading
 import time
@@ -177,116 +176,75 @@ def standardize(x, mask):
     return (x - mean) / std
 
 
-def train_on_batch(device, optimizer, model, model_old, policy, batch, backpropagation_steps,
-                   clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
-    model.zero_grad()
+def compute_gradients(device, model, policy, model_old, last_state, last_state_old, observations, actions, returns,
+                      advantages, mask, clip_range, value_coefficient, entropy_coefficient):
+    observations = observations.to(device)
+    actions = actions.to(device)
+    returns = returns.to(device)
+    advantages = advantages.to(device)
+    mask = mask.to(device)
 
-    all_observations, all_actions, all_returns, all_advantages, all_mask = batch
+    policy_dists, value_estimates, last_state = model(observations, initial_state=last_state)
 
-    all_advantages = standardize(all_advantages, all_mask)
+    log_probs = policy.action_log_prob(
+        policy_dists.flatten(start_dim=0, end_dim=1),
+        actions.flatten(start_dim=0, end_dim=1)
+    ).reshape([actions.size(0), actions.size(1)])
+    assert log_probs.shape == advantages.shape
 
-    backward_steps = math.ceil(all_observations.size(1) / backpropagation_steps)
+    with torch.no_grad():
+        policy_dists_old, _, last_state_old = model_old(
+            observations,
+            initial_state=last_state_old,
+            compute_value_estimates=False
+        )
 
-    actor_loss_sum = 0
-    critic_loss_sum = 0
-    entropy_loss_sum = 0
-    loss_sum = 0
+    log_probs_old = policy.action_log_prob(
+        policy_dists_old.flatten(start_dim=0, end_dim=1),
+        actions.flatten(start_dim=0, end_dim=1)
+    ).reshape([actions.size(0), actions.size(1)])
+    assert log_probs_old.shape == advantages.shape
 
-    last_state = None
-    last_state_old = None
+    ratios = torch.exp(log_probs - log_probs_old)
+    num_of_samples = torch.sum(mask)
+    assert num_of_samples >= 1
 
-    for observations, actions, returns, advantages, mask in zip(
-            all_observations.split(backpropagation_steps, dim=1),
-            all_actions.split(backpropagation_steps, dim=1),
-            all_returns.split(backpropagation_steps, dim=1),
-            all_advantages.split(backpropagation_steps, dim=1),
-            all_mask.split(backpropagation_steps, dim=1)
-    ):
-        observations = observations.to(device)
-        actions = actions.to(device)
-        returns = returns.to(device)
-        advantages = advantages.to(device)
-        mask = mask.to(device)
+    surrogate_objective = torch.sum(torch.min(
+        ratios * advantages,
+        torch.clamp(ratios, 1 - clip_range, 1 + clip_range) * advantages
+    ) * mask)
 
-        policy_dists, value_estimates, last_state = model(observations, initial_state=last_state)
+    actor_loss = -surrogate_objective
+    assert actor_loss.numel() == 1
+    assert not actor_loss.isnan()
 
-        log_probs = policy.action_log_prob(
-            policy_dists.flatten(start_dim=0, end_dim=1),
-            actions.flatten(start_dim=0, end_dim=1)
-        ).reshape([actions.size(0), actions.size(1)])
-        assert log_probs.shape == advantages.shape
+    critic_loss = torch.sum(F.mse_loss(value_estimates, returns, reduction="none") * mask)
+    assert not critic_loss.isnan()
+    assert critic_loss.numel() == 1
 
-        with torch.no_grad():
-            policy_dists_old, _, last_state_old = model_old(
-                observations,
-                initial_state=last_state_old,
-                compute_value_estimates=False
-            )
+    entropies = policy.entropy(
+        policy_dists.flatten(start_dim=0, end_dim=1)
+    ).reshape([policy_dists.size(0), policy_dists.size(1)])
+    assert entropies.shape == mask.shape
 
-        log_probs_old = policy.action_log_prob(
-            policy_dists_old.flatten(start_dim=0, end_dim=1),
-            actions.flatten(start_dim=0, end_dim=1)
-        ).reshape([actions.size(0), actions.size(1)])
-        assert log_probs_old.shape == advantages.shape
+    entropy = torch.sum(entropies * mask)
+    entropy_loss = -entropy
+    assert not entropy_loss.isnan()
+    assert entropy_loss.numel() == 1
 
-        ratios = torch.exp(log_probs - log_probs_old)
-        num_of_samples = torch.sum(mask)
-        assert num_of_samples >= 1
+    loss = actor_loss + value_coefficient * critic_loss + entropy_coefficient * entropy_loss
+    loss.backward()
 
-        surrogate_objective = torch.sum(torch.min(
-            ratios * advantages,
-            torch.clamp(ratios, 1 - clip_range, 1 + clip_range) * advantages
-        ) * mask) / num_of_samples
+    assert loss < 1e6
 
-        actor_loss = -surrogate_objective
-        assert actor_loss.numel() == 1
-        assert not actor_loss.isnan()
+    last_state.detach_()
 
-        critic_loss = torch.sum(F.mse_loss(value_estimates, returns, reduction="none") * mask) / num_of_samples
-        assert not critic_loss.isnan()
-        assert critic_loss.numel() == 1
-
-        entropies = policy.entropy(
-            policy_dists.flatten(start_dim=0, end_dim=1)
-        ).reshape([policy_dists.size(0), policy_dists.size(1)])
-        assert entropies.shape == mask.shape
-
-        entropy = torch.sum(entropies * mask) / num_of_samples
-        entropy_loss = -entropy
-        assert not entropy_loss.isnan()
-        assert entropy_loss.numel() == 1
-
-        loss = actor_loss + value_coefficient * critic_loss + entropy_coefficient * entropy_loss
-        (loss / backward_steps).backward()
-
-        actor_loss_sum += actor_loss.item()
-        critic_loss_sum += critic_loss.item()
-        entropy_loss_sum += entropy_loss.item()
-        loss_sum += loss.item()
-
-        assert loss < 1e6
-
-        last_state.detach_()
-
-    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-    optimizer.step()
-
-    avg_loss = torch.tensor([loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_actor_loss = torch.tensor([actor_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_critic_loss = torch.tensor([critic_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-    avg_entropy_loss = torch.tensor([entropy_loss_sum / backward_steps], dtype=torch.float32, device=device).item()
-
-    return (
-        avg_loss,
-        avg_actor_loss,
-        avg_critic_loss,
-        avg_entropy_loss,
-        grad_norm.item()
-    )
+    return (actor_loss.item(), critic_loss.item(), entropy_loss.item(), loss.item(), num_of_samples.item(), last_state,
+            last_state_old)
 
 
 def train(device, dataset, model, policy, optimizer, metrics, start_iteration, num_epochs, batch_size,
-          backpropagation_steps, clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
+          parallel_sequences, backpropagation_steps, clip_range, max_grad_norm, value_coefficient, entropy_coefficient):
     logging.info(f"Training on {len(dataset)} trajectories")
 
     model_old = copy.deepcopy(model)
@@ -295,13 +253,14 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         # batch: list of tuples where each tuple is
         # (observations: torch.Tensor, actions: torch.Tensor, returns: torch.Tensor, advantages: torch.Tensor)
         observations, actions, returns, advantages = zip(*batch)
-        assert len(observations) == len(actions) == len(advantages) == batch_size
+        assert len(observations) == len(actions) == len(advantages)
+        assert 1 <= len(observations) <= parallel_sequences
 
         lengths = torch.tensor([len(trajectory_observations) for trajectory_observations in observations],
                                dtype=torch.int64)
         max_length = torch.max(lengths).item()
 
-        mask = torch.arange(max_length).reshape([1, max_length]).expand(batch_size, -1) < lengths.unsqueeze(-1)
+        mask = torch.arange(max_length).reshape([1, max_length]).expand(len(observations), -1) < lengths.unsqueeze(-1)
 
         observations = pad_sequence(observations, batch_first=True)
         actions = pad_sequence(actions, batch_first=True)
@@ -313,7 +272,8 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
 
         return observations, actions, returns, advantages, mask
 
-    data_loader = DataLoader(dataset, shuffle=True, drop_last=True, batch_size=batch_size, collate_fn=collate_fn)
+    data_loader = DataLoader(dataset, shuffle=True, drop_last=False, batch_size=parallel_sequences,
+                             collate_fn=collate_fn)
 
     iteration = start_iteration
 
@@ -324,42 +284,90 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         actor_loss_sum = 0
         critic_loss_sum = 0
         entropy_loss_sum = 0
+        grad_norm_sum = 0
+        num_of_samples_sum = 0
+        updates_done = 0
 
-        num_of_batches = 0
+        samples_since_update = 0
 
         for batch in data_loader:
-            loss, actor_loss, critic_loss, entropy_loss, grad_norm = train_on_batch(
-                device,
-                optimizer,
-                model,
-                model_old,
-                policy,
-                batch,
-                backpropagation_steps=backpropagation_steps,
-                clip_range=clip_range,
-                max_grad_norm=max_grad_norm,
-                value_coefficient=value_coefficient,
-                entropy_coefficient=entropy_coefficient
-            )
+            all_observations, all_actions, all_returns, all_advantages, all_mask = batch
+            all_advantages = standardize(all_advantages, all_mask)
 
-            num_of_batches += 1
+            last_state = None
+            last_state_old = None
 
-            loss_sum += loss
-            actor_loss_sum += actor_loss
-            critic_loss_sum += critic_loss
-            entropy_loss_sum += entropy_loss
-            metrics.add_scalar("Loss/Total", loss_sum / num_of_batches, iteration)
-            metrics.add_scalar("Loss/Actor", actor_loss_sum / num_of_batches, iteration)
-            metrics.add_scalar("Loss/Critic", critic_loss_sum / num_of_batches, iteration)
-            metrics.add_scalar("Loss/Entropy", entropy_loss_sum / num_of_batches, iteration)
-            metrics.add_scalar("Unclipped gradient norm", grad_norm, iteration)
+            for observations, actions, returns, advantages, mask in zip(
+                    all_observations.split(backpropagation_steps, dim=1),
+                    all_actions.split(backpropagation_steps, dim=1),
+                    all_returns.split(backpropagation_steps, dim=1),
+                    all_advantages.split(backpropagation_steps, dim=1),
+                    all_mask.split(backpropagation_steps, dim=1)
+            ):
+                (actor_loss, critic_loss, entropy_loss, loss, num_of_samples,
+                 last_state, last_state_old) = compute_gradients(
+                    device=device,
+                    model=model,
+                    policy=policy,
+                    model_old=model_old,
+                    last_state=last_state,
+                    last_state_old=last_state_old,
+                    observations=observations,
+                    actions=actions,
+                    returns=returns,
+                    advantages=advantages,
+                    mask=mask,
+                    clip_range=clip_range,
+                    value_coefficient=value_coefficient,
+                    entropy_coefficient=entropy_coefficient
+                )
 
-            iteration += 1
+                samples_since_update += num_of_samples
+                num_of_samples_sum += num_of_samples
 
-        logging.info(f"Epoch total loss: {loss_sum / num_of_batches:.3f}, "
-                     f"actor loss: {actor_loss_sum / num_of_batches:.3f}, "
-                     f"critic loss: {critic_loss_sum / num_of_batches:.3f}, "
-                     f"entropy loss: {entropy_loss_sum / num_of_batches:.3f}")
+                if samples_since_update >= batch_size:
+                    for p in model.parameters():
+                        p.grad = torch.div(p.grad, samples_since_update)
+
+                    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                    grad_norm_sum += grad_norm.item()
+                    optimizer.step()
+
+                    model.zero_grad()
+                    samples_since_update = 0
+                    updates_done += 1
+
+                    metrics.add_scalar("Unclipped gradient norm", grad_norm_sum / updates_done, iteration)
+
+                loss_sum += loss
+                actor_loss_sum += actor_loss
+                critic_loss_sum += critic_loss
+                entropy_loss_sum += entropy_loss
+
+                metrics.add_scalar("Loss/Total", loss_sum / num_of_samples_sum, iteration)
+                metrics.add_scalar("Loss/Actor", actor_loss_sum / num_of_samples_sum, iteration)
+                metrics.add_scalar("Loss/Critic", critic_loss_sum / num_of_samples_sum, iteration)
+                metrics.add_scalar("Loss/Entropy", entropy_loss_sum / num_of_samples_sum, iteration)
+
+                iteration += 1
+
+        if samples_since_update > 0.1 * batch_size:
+            for p in model.parameters():
+                p.grad = torch.div(p.grad, samples_since_update)
+
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            grad_norm_sum += grad_norm.item()
+            optimizer.step()
+
+            model.zero_grad()
+            updates_done += 1
+
+            metrics.add_scalar("Unclipped gradient norm", grad_norm_sum / updates_done, iteration)
+
+        logging.info(f"Epoch total loss: {loss_sum / num_of_samples_sum:.3f}, "
+                     f"actor loss: {actor_loss_sum / num_of_samples_sum:.3f}, "
+                     f"critic loss: {critic_loss_sum / num_of_samples_sum:.3f}, "
+                     f"entropy loss: {entropy_loss_sum / num_of_samples_sum:.3f}")
 
     return iteration
 
@@ -400,9 +408,9 @@ def run_episodes_parallel(policy, envs, num_steps, min_episodes):
 
 def collect_data_and_train_iteration(device, policy, envs, model, optimizer, metrics, steps_per_iteration,
                                      train_it, global_it, critic, bootstrap_length, num_epochs, batch_size,
-                                     backpropagation_steps, clip_range, max_grad_norm, value_coefficient,
-                                     entropy_coefficient, assets_dir, callback_fn, reward_stats):
-    trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, batch_size)
+                                     parallel_sequences, backpropagation_steps, clip_range, max_grad_norm,
+                                     value_coefficient, entropy_coefficient, assets_dir, callback_fn, reward_stats):
+    trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, parallel_sequences)
 
     logging.info("Data collection phase finished")
 
@@ -424,6 +432,7 @@ def collect_data_and_train_iteration(device, policy, envs, model, optimizer, met
         start_iteration=train_it,
         num_epochs=num_epochs,
         batch_size=batch_size,
+        parallel_sequences=parallel_sequences,
         backpropagation_steps=backpropagation_steps,
         clip_range=clip_range,
         max_grad_norm=max_grad_norm,
@@ -449,7 +458,8 @@ def collect_data_and_train(
         steps_per_iteration=4096,
         bootstrap_length=5,
         num_epochs=3,
-        batch_size=128,
+        parallel_sequences=128,
+        batch_size=1280,
         backpropagation_steps=10,
         clip_range=0.2,
         max_grad_norm=5.0,
@@ -485,6 +495,7 @@ def collect_data_and_train(
             bootstrap_length=bootstrap_length,
             num_epochs=num_epochs,
             batch_size=batch_size,
+            parallel_sequences=parallel_sequences,
             backpropagation_steps=backpropagation_steps,
             clip_range=clip_range,
             max_grad_norm=max_grad_norm,
