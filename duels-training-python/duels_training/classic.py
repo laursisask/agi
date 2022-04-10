@@ -21,25 +21,12 @@ from duels_training.classic_model import ClassicModel
 from duels_training.classic_policy import compute_log_prob_dists, sample_action
 from duels_training.incremental_stats_calculator import IncrementalStatsCalculator
 from duels_training.logger import configure_logger
+from duels_training.math_utils import liner_anneal
 from duels_training.opponent_sampler import OpponentSampler
 from duels_training.ppo import collect_data_and_train
 from duels_training.preprocessing import transform_raw_state
 from duels_training.stats_utils import normal_log_probs, inverse_log_prob, categorical_entropy, bernoulli_entropy, \
     normal_entropy
-
-
-def linear_increase(iteration, increase_end):
-    if iteration >= increase_end:
-        return 1
-
-    return 1 - (increase_end - iteration) / increase_end
-
-
-def liner_anneal(iteration, decrease_end):
-    if iteration >= decrease_end:
-        return 0
-
-    return (decrease_end - iteration) / decrease_end
 
 
 class SpawnDistanceController:
