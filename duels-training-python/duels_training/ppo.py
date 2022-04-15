@@ -90,32 +90,65 @@ def compute_value_estimates(device, critic, observations, steps_per_call) -> tor
     return value_estimates
 
 
-def compute_n_step_returns(value_estimates: torch.Tensor, rewards: List[List[float]], n: int) -> torch.Tensor:
+def compute_n_step_returns(value_estimates: torch.Tensor, rewards: List[List[float]], n: int,
+                           discount_factor: float) -> torch.Tensor:
     returns = torch.zeros(value_estimates.shape)
 
     num_of_trajectories = len(rewards)
     for i in range(num_of_trajectories):
         trajectory_length = len(rewards[i])
-        last_n_rewards = 0
+        working_return = 0
 
         for t in reversed(range(trajectory_length)):
-            last_n_rewards += rewards[i][t]
+            if t + n < trajectory_length:
+                working_return -= rewards[i][t + n] * (discount_factor ** (n - 1))
+
+            working_return = working_return * discount_factor + rewards[i][t]
 
             if t + n < trajectory_length:
-                last_n_rewards -= rewards[i][t + n]
-
-            if t + n < trajectory_length:
-                ret = last_n_rewards + value_estimates[i][t + n].item()
+                ret = working_return + (discount_factor ** n) * value_estimates[i][t + n].item()
             else:
-                ret = last_n_rewards
+                ret = working_return
 
             returns[i][t] = ret
 
     return returns
 
 
+def compute_gae(value_estimates: torch.Tensor, rewards: List[List[float]], discount_factor: float,
+                gae_param: float) -> torch.Tensor:
+    batch_size = value_estimates.size(0)
+    max_sequence_len = value_estimates.size(1)
+
+    rewards_tensor = pad_sequence([torch.tensor(trajectory) for trajectory in rewards], batch_first=True)
+    assert rewards_tensor.shape == value_estimates.shape
+
+    next_state_value = torch.concat([value_estimates[:, 1:], torch.zeros(batch_size, 1)], dim=1)
+    assert next_state_value.shape == value_estimates.shape
+
+    lengths = torch.tensor([len(trajectory) for trajectory in rewards], dtype=torch.int32)
+    next_state_value_mask = (torch.arange(max_sequence_len).unsqueeze(0).expand(batch_size, -1) + 1 <
+                             lengths.unsqueeze(-1).expand(-1, max_sequence_len))
+    assert next_state_value_mask.shape == value_estimates.shape
+
+    residuals = rewards_tensor + discount_factor * next_state_value * next_state_value_mask - value_estimates
+    assert residuals.shape == value_estimates.shape
+
+    gae = torch.zeros(value_estimates.shape)
+
+    working_gae = torch.zeros(batch_size, dtype=torch.float32)
+    for i in reversed(range(max_sequence_len)):
+        mask = i < lengths
+        working_gae = residuals[:, i] * mask + (gae_param * discount_factor) * working_gae
+
+        gae[:, i] = working_gae
+
+    return gae
+
+
 @torch.no_grad()
-def create_dataset(device, critic, trajectories, bootstrap_length, reward_stats, batch_size=64, steps_per_call=32):
+def create_dataset(device, critic, trajectories, bootstrap_length, discount_factor, gae_param, reward_stats,
+                   batch_size=64, steps_per_call=32):
     trajectories = sorted(trajectories, key=len)
 
     def collate_fn(batch):
@@ -143,9 +176,9 @@ def create_dataset(device, critic, trajectories, bootstrap_length, reward_stats,
         reward_std = reward_stats.std() + 1e-7
         normalized_rewards = [[reward / reward_std for reward in trajectory_rewards] for trajectory_rewards in rewards]
 
-        returns = compute_n_step_returns(value_estimates, normalized_rewards, bootstrap_length)
+        returns = compute_n_step_returns(value_estimates, normalized_rewards, bootstrap_length, discount_factor)
 
-        advantages = returns - value_estimates
+        advantages = compute_gae(value_estimates, normalized_rewards, discount_factor, gae_param)
 
         for t_observations, t_actions, t_rewards, t_returns, t_advantages in zip(
                 observations,
@@ -407,9 +440,10 @@ def run_episodes_parallel(policy, envs, num_steps, min_episodes):
 
 
 def collect_data_and_train_iteration(device, policy, envs, model, optimizer, metrics, steps_per_iteration,
-                                     train_it, global_it, critic, bootstrap_length, num_epochs, batch_size,
-                                     parallel_sequences, backpropagation_steps, clip_range, max_grad_norm,
-                                     value_coefficient, entropy_coefficient, assets_dir, callback_fn, reward_stats):
+                                     train_it, global_it, critic, bootstrap_length, discount_factor, gae_param,
+                                     num_epochs, batch_size, parallel_sequences, backpropagation_steps, clip_range,
+                                     max_grad_norm, value_coefficient, entropy_coefficient, assets_dir, callback_fn,
+                                     reward_stats):
     trajectories = run_episodes_parallel(policy, envs, steps_per_iteration, parallel_sequences)
 
     logging.info("Data collection phase finished")
@@ -419,7 +453,11 @@ def collect_data_and_train_iteration(device, policy, envs, model, optimizer, met
 
     [reward_stats.append(reward) for trajectory in trajectories for reward in trajectory.rewards]
 
-    dataset = create_dataset(device, critic, trajectories, bootstrap_length=bootstrap_length, reward_stats=reward_stats)
+    dataset = create_dataset(device, critic, trajectories,
+                             bootstrap_length=bootstrap_length,
+                             discount_factor=discount_factor,
+                             gae_param=gae_param,
+                             reward_stats=reward_stats)
     del trajectories
 
     train_it = train(
@@ -457,6 +495,8 @@ def collect_data_and_train(
         iterations=1000,
         steps_per_iteration=4096,
         bootstrap_length=5,
+        discount_factor=0.99,
+        gae_param=0.95,
         num_epochs=3,
         parallel_sequences=128,
         batch_size=1280,
@@ -493,6 +533,8 @@ def collect_data_and_train(
             global_it=i,
             critic=critic,
             bootstrap_length=bootstrap_length,
+            discount_factor=discount_factor,
+            gae_param=gae_param,
             num_epochs=num_epochs,
             batch_size=batch_size,
             parallel_sequences=parallel_sequences,
