@@ -317,7 +317,6 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         actor_loss_sum = 0
         critic_loss_sum = 0
         entropy_loss_sum = 0
-        grad_norm_sum = 0
         num_of_samples_sum = 0
         updates_done = 0
 
@@ -363,14 +362,13 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
                         p.grad = torch.div(p.grad, samples_since_update)
 
                     grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-                    grad_norm_sum += grad_norm.item()
                     optimizer.step()
 
                     model.zero_grad()
                     samples_since_update = 0
                     updates_done += 1
 
-                    metrics.add_scalar("Unclipped gradient norm", grad_norm_sum / updates_done, iteration)
+                    metrics.add_scalar("Unclipped gradient norm", grad_norm.item(), iteration)
 
                 loss_sum += loss
                 actor_loss_sum += actor_loss
