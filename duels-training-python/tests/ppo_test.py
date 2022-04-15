@@ -96,9 +96,13 @@ def test_create_dataset_single_trajectory():
 
     def critic_fn(x, initial_state):
         assert x.shape == (1, 3, 8)
+
         critic_calls.append((x, initial_state))
 
-        return torch.full([x.size(0), x.size(1)], 0.2), torch.randn([x.size(0), x.size(1)])
+        if len(critic_calls) == 1:
+            return torch.tensor([[0.4, 0.8, -0.3]]), torch.randn([1, 3])
+        else:
+            return torch.tensor([[0.5, 0.3, 0.1]]), torch.randn([1, 3])
 
     class MockRewardStats:
         def __init__(self):
@@ -123,6 +127,8 @@ def test_create_dataset_single_trajectory():
         reward_stats=MockRewardStats(),
         batch_size=13,
         bootstrap_length=2,
+        discount_factor=0.9,
+        gae_param=0.8,
         steps_per_call=3
     )
 
@@ -134,8 +140,9 @@ def test_create_dataset_single_trajectory():
         assert torch.equal(observations_list[i], observations[i])
         assert torch.equal(actions_list[i], actions[i])
 
-    assert torch.allclose(returns, torch.tensor([0.7, -0.1, -0.2, 0.3, 0.9, 0.9], dtype=torch.float32))
-    assert torch.allclose(advantages, torch.tensor([0.5, -0.3, -0.4, 0.1, 0.7, 0.7], dtype=torch.float32))
+    assert torch.allclose(returns, torch.tensor([0.237, 0.155, -0.167, 0.181, 0.81, 0.9], dtype=torch.float32))
+    assert torch.allclose(advantages, torch.tensor([0.1730, -0.6208, 0.3461, 0.1335, 0.3660, 0.8], dtype=torch.float32),
+                          atol=1e-4)
 
     assert len(critic_calls) == 2
 
@@ -182,6 +189,8 @@ def test_create_dataset_gridworld():
         reward_stats=MockRewardStats(),
         batch_size=13,
         bootstrap_length=2,
+        discount_factor=0.9,
+        gae_param=0.8,
         steps_per_call=3
     )
 
@@ -204,16 +213,16 @@ def test_create_dataset_gridworld():
         assert torch.equal(torch.stack(original_trajectory.actions), actions)
 
         assert returns[-1].item() == pytest.approx(10.0)
-        assert returns[-2].item() == pytest.approx(9.0)
+        assert returns[-2].item() == pytest.approx(8.0)
 
         for i in range(length - 2):
-            assert returns[i].item() == pytest.approx(-1.9)
+            assert returns[i].item() == pytest.approx(-1 + (-1) * 0.9 + 0.1 * 0.9 ** 2)
 
+        assert advantages[0].item() < 0
         assert advantages[-1].item() == pytest.approx(9.9)
-        assert advantages[-2].item() == pytest.approx(8.9)
+        assert advantages[-2].item() == pytest.approx(6.118)
 
-        for i in range(length - 2):
-            assert advantages[i].item() == pytest.approx(-2)
+        assert torch.equal(torch.sort(advantages).values, advantages)
 
 
 def test_compute_gradients():
