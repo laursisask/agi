@@ -28,6 +28,91 @@ from duels_training.stats_utils import normal_log_probs, inverse_log_prob, categ
     normal_entropy
 
 
+class RollbackController:
+    def __init__(self, run_id, device, model, optimizer, spawn_distance_controller, window_size=25, threshold=0.25):
+        self.run_id = run_id
+        self.device = device
+        self.model = model
+        self.optimizer = optimizer
+        self.spawn_distance_controller = spawn_distance_controller
+        self.window_size = window_size
+        self.threshold = threshold
+
+        self.path = f"artifacts/{run_id}/rollback_controller.json"
+        if os.path.exists(self.path):
+            self.load_state_from_disk()
+        else:
+            self.win_rates = []
+            self.last_spawn_distance = spawn_distance_controller.get_spawn_distance()
+
+    def load_state_from_disk(self):
+        logging.info("Loading rollback controller state from disk")
+
+        with open(self.path) as f:
+            saved_data = json.load(f)
+            self.win_rates = saved_data["win_rates"]
+            self.last_spawn_distance = saved_data["last_spawn_distance"]
+
+    def save_state_to_disk(self):
+        with open(self.path, "w") as f:
+            state = {
+                "win_rates": self.win_rates,
+                "last_spawn_distance": self.last_spawn_distance
+            }
+
+            json.dump(state, f)
+
+    def data_collection_done(self, global_it, trajectories):
+        win_rate = self.calculate_win_rate(trajectories)
+
+        new_spawn_distance = self.spawn_distance_controller.get_spawn_distance()
+        if new_spawn_distance - self.last_spawn_distance > 0.001:
+            self.win_rates = []
+
+        self.last_spawn_distance = new_spawn_distance
+
+        self.win_rates.append([win_rate, global_it - 1])
+
+        if len(self.win_rates) > self.window_size:
+            del self.win_rates[0]
+
+        self.save_state_to_disk()
+
+    def training_iteration_done(self):
+        if len(self.win_rates) >= 2:
+            max_win_rate, max_win_rate_it = max(self.win_rates)
+            last_win_rate, _ = self.win_rates[-1]
+
+            if max_win_rate - last_win_rate > self.threshold:
+                print(f"Rolling back to iteration {max_win_rate_it} with win rate {max_win_rate}")
+                self.rollback_to(max_win_rate_it)
+
+    def rollback_to(self, iteration):
+        weights_file = f"artifacts/{self.run_id}/models/{iteration}.pt"
+        logging.info(f"Loading model weights from {weights_file}")
+        self.model.load_state_dict(torch.load(weights_file, map_location=torch.device("cpu")))
+
+        optimizer_file = f"artifacts/{self.run_id}/optimizer_states/{iteration}.pt"
+        logging.info(f"Loading optimizer weights from {optimizer_file}")
+        state_dict = torch.load(optimizer_file)
+        self.optimizer.load_state_dict(state_dict)
+
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if torch.is_tensor(v):
+                    state[k] = v.to(self.device).contiguous()
+
+    @staticmethod
+    def calculate_win_rate(trajectories):
+        wins = 0
+        for trajectory in trajectories:
+            for metadata in trajectory.metadatas:
+                if "win" in metadata:
+                    wins += 1
+
+        return wins / len(trajectories)
+
+
 class SpawnDistanceController:
     def __init__(self, run_id, k=10, max_timeout_rate_for_update=0.2, distance_increment=0.02):
         self.k = k
@@ -499,7 +584,9 @@ def train(initial_model, initial_optimizer, initial_reward_stats, start_global_i
         model_copy.eval()
 
         os.makedirs(f"artifacts/{run_id}/models", exist_ok=True)
+        os.makedirs(f"artifacts/{run_id}/optimizer_states", exist_ok=True)
         torch.save(model_copy.state_dict(), f"artifacts/{run_id}/models/{new_global_iteration}.pt")
+        torch.save(optimizer.state_dict(), f"artifacts/{run_id}/optimizer_states/{new_global_iteration}.pt")
 
         with open(f"artifacts/{run_id}/last_iteration.json", "w") as file:
             last_iteration = {
@@ -514,6 +601,8 @@ def train(initial_model, initial_optimizer, initial_reward_stats, start_global_i
 
         nonlocal global_iteration
         global_iteration = new_global_iteration
+
+        rollback_controller.training_iteration_done()
 
     episode_stats_aggregator = EpisodeStatsAggregator(run_id, metrics)
 
@@ -532,12 +621,21 @@ def train(initial_model, initial_optimizer, initial_reward_stats, start_global_i
 
     spawn_distance_controller = SpawnDistanceController(run_id)
 
+    rollback_controller = RollbackController(
+        run_id=run_id,
+        device=device,
+        model=model,
+        optimizer=optimizer,
+        spawn_distance_controller=spawn_distance_controller
+    )
+
     last_num_of_episodes = 50
 
     def post_data_collect_callback(global_it, trajectories):
         episode_stats_aggregator(global_it, trajectories)
 
         spawn_distance_controller.iteration_done(trajectories)
+        rollback_controller.data_collection_done(global_it, trajectories)
 
         metrics.add_scalar("Spawn distance", spawn_distance_controller.get_spawn_distance(), global_it)
 
