@@ -287,7 +287,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
         # (observations: torch.Tensor, actions: torch.Tensor, returns: torch.Tensor, advantages: torch.Tensor)
         observations, actions, returns, advantages = zip(*batch)
         assert len(observations) == len(actions) == len(advantages)
-        assert 1 <= len(observations) <= parallel_sequences
+        assert len(observations) == parallel_sequences
 
         lengths = torch.tensor([len(trajectory_observations) for trajectory_observations in observations],
                                dtype=torch.int64)
@@ -305,7 +305,7 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
 
         return observations, actions, returns, advantages, mask
 
-    data_loader = DataLoader(dataset, shuffle=True, drop_last=False, batch_size=parallel_sequences,
+    data_loader = DataLoader(dataset, shuffle=True, drop_last=True, batch_size=parallel_sequences,
                              collate_fn=collate_fn)
 
     iteration = start_iteration
