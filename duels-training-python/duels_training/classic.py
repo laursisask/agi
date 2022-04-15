@@ -345,8 +345,13 @@ class ClassicEnv:
             if done:
                 self.recorder.release()
 
+        if done:
+            terminal_reward = 10 if "win" in metadata else -10
+        else:
+            terminal_reward = 0
+
         total_reward = ((metadata.get("hits_done", 0) - metadata.get("hits_received", 0)) *
-                        liner_anneal(self.get_global_iteration(), 10000) + metadata.get("win", 0) * 100)
+                        liner_anneal(self.get_global_iteration(), 10000) + terminal_reward)
 
         return transform_raw_state(raw_observation), total_reward, done, metadata
 
