@@ -29,14 +29,16 @@ from duels_training.stats_utils import normal_log_probs, inverse_log_prob, categ
 
 
 class RollbackController:
-    def __init__(self, run_id, device, model, optimizer, spawn_distance_controller, window_size=25, threshold=0.25):
+    def __init__(self, run_id, device, model, optimizer, spawn_distance_controller, window_size=25,
+                 abs_threshold=0.25, rel_threshold=5):
         self.run_id = run_id
         self.device = device
         self.model = model
         self.optimizer = optimizer
         self.spawn_distance_controller = spawn_distance_controller
         self.window_size = window_size
-        self.threshold = threshold
+        self.abs_threshold = abs_threshold
+        self.rel_threshold = rel_threshold
 
         self.path = f"artifacts/{run_id}/rollback_controller.json"
         if os.path.exists(self.path):
@@ -83,7 +85,8 @@ class RollbackController:
             max_win_rate, max_win_rate_it = max(self.win_rates)
             last_win_rate, _ = self.win_rates[-1]
 
-            if max_win_rate - last_win_rate > self.threshold:
+            if (max_win_rate - last_win_rate > self.abs_threshold or (max_win_rate > 0 and last_win_rate == 0)
+                    or (max_win_rate > 0 and max_win_rate / last_win_rate > self.rel_threshold)):
                 print(f"Rolling back to iteration {max_win_rate_it} with win rate {max_win_rate}")
                 self.rollback_to(max_win_rate_it)
 
