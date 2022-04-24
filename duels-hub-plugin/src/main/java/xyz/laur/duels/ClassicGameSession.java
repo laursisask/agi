@@ -157,7 +157,7 @@ public class ClassicGameSession implements Listener, GameSession {
         this.spawnDistance = spawnDistance;
         this.barriers = barriers;
 
-        setSpawnLocations(world, spawnDistance);
+        setSpawnLocations(world, (float) (spawnDistance * Math.random()));
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
