@@ -47,14 +47,15 @@ public class BridgeGameSession implements Listener, GameSession {
     private int movementMetadataTask;
 
     public BridgeGameSession(World world, SessionManager sessionManager, InvisibilityManager invisibilityManager,
-                             SkinChanger skinChanger, Plugin plugin, BridgeMap map, double spawnDistanceFraction) {
+                             SkinChanger skinChanger, Plugin plugin, BridgeMap map, double maxSpawnDistanceFraction) {
         this.world = world;
         this.sessionManager = sessionManager;
         this.invisibilityManager = invisibilityManager;
         this.skinChanger = skinChanger;
         this.plugin = plugin;
         this.map = map;
-        this.spawnDistanceFraction = spawnDistanceFraction;
+
+        spawnDistanceFraction = maxSpawnDistanceFraction * Math.random();
 
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
@@ -183,12 +184,22 @@ public class BridgeGameSession implements Listener, GameSession {
 
         Vector toFullSpawn = original.toVector().subtract(center.toVector());
 
+        double yStart = spawnDistanceFraction > 0.9 ? original.getY() : 255;
+
+        Vector oneBlockTowardFullSpawn = toFullSpawn
+                .clone()
+                .setY(0)
+                .setX(clip(toFullSpawn.getX(), -1, 1))
+                .setZ(clip(toFullSpawn.getZ(), -1, 1));
+
         Location spawn = center.clone().add(toFullSpawn.multiply(spawnDistanceFraction));
-        spawn.setY(255);
+        spawn.setY(yStart);
 
         while (spawn.getBlock().getRelative(BlockFace.DOWN).getType().isTransparent()) {
             if (spawn.getY() < 0) {
-                throw new RuntimeException("Did not found a block to spawn player on");
+                spawn.add(oneBlockTowardFullSpawn);
+                spawn.setY(yStart);
+                continue;
             }
 
             spawn.subtract(0, 1, 0);
@@ -515,5 +526,9 @@ public class BridgeGameSession implements Listener, GameSession {
         }
 
         throw new IllegalStateException("Could not find other player");
+    }
+
+    protected static double clip(double value, double min, double max) {
+        return Math.max(Math.min(value, max), min);
     }
 }
