@@ -81,7 +81,7 @@ class RollbackController:
         self.save_state_to_disk()
 
     def training_iteration_done(self):
-        if len(self.win_rates) >= 2:
+        if len(self.win_rates) >= self.window_size:
             max_win_rate, max_win_rate_it = max(self.win_rates)
             last_win_rate, _ = self.win_rates[-1]
 
