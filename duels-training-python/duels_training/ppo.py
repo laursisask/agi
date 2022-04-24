@@ -382,19 +382,6 @@ def train(device, dataset, model, policy, optimizer, metrics, start_iteration, n
 
                 iteration += 1
 
-        if samples_since_update > 0.1 * batch_size:
-            for p in model.parameters():
-                p.grad = torch.div(p.grad, samples_since_update)
-
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-            grad_norm_sum += grad_norm.item()
-            optimizer.step()
-
-            model.zero_grad()
-            updates_done += 1
-
-            metrics.add_scalar("Unclipped gradient norm", grad_norm_sum / updates_done, iteration)
-
         logging.info(f"Epoch total loss: {loss_sum / num_of_samples_sum:.3f}, "
                      f"actor loss: {actor_loss_sum / num_of_samples_sum:.3f}, "
                      f"critic loss: {critic_loss_sum / num_of_samples_sum:.3f}, "
