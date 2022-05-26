@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning Competitive Minecraft Minigames with Reinforcement Learning</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Learning Competitive Minecraft Minigames with Reinforcement Learning</h1>
+  </div>
+  <div class="content">
+    <h2>About</h2>
+    <p>
+      The goal of this project was to train reinforcement learning agents to play competitive Minecraft minigames.
+      The agents learned to play the minigames by playing against each other, commonly referred to as self-play.
+      Proximal policy optimization (PPO) was used for training.
+    </p>
+    <p>
+      In total, three games were trained: Sumo, Classic Duels, and The Bridge. Each game was trained for 7 days.
+      During the experiment, the agents played over 10 years worth of Minecraft.
+    </p>
+    <h2>Source Code</h2>
+    <p>You can find the source code for different components here:</p>
+    <ul>
+      <li>
+        <a href="https://github.com/laursisask/agi/tree/master/duels-training-python" target="_blank">
+          Training code
+        </a>
+      </li>
+      <li>
+        <a href="https://github.com/laursisask/agi/tree/master/duels-hub-plugin" target="_blank">
+          Minecraft server plugin code
+        </a>
+      </li>
+    </ul>
+    <h2>Results</h2>
+    <p>
+      Below, you can see the trained agents playing against each other and real players.
+    </p>
+    <div class="video-container">
+      <video src="videos/sumo.mp4" autoplay muted loop></video>
+      <video src="videos/classic_duels.mp4" autoplay muted loop></video>
+      <video src="videos/the_bridge.mp4" autoplay muted loop></video>
+    </div>
+  </div>
+</div>
+</body>
+</html>
