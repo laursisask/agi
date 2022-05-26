@@ -1,0 +1,72 @@
+@font-face {
+    font-family: "Minercraftory";
+    src: url("minercraftory.ttf");
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("roboto.ttf");
+}
+
+body {
+    background-image: url('images/background.png');
+    background-color: #000000;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    font-family: "Roboto", serif;
+    text-shadow: 1px 1px 1px #000000;
+}
+
+a {
+    color: #ffda75;
+    text-decoration: none;
+}
+
+a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+li {
+    list-style-type: square;
+    color: #ffda75;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Minercraftory", serif;
+    text-transform: uppercase;
+    color: #ffda75;
+}
+
+p {
+    font-size: 18px;
+    color: #ffffff;
+}
+
+.container {
+    width: 75%;
+    max-width: 1040px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.header {
+    text-align: center;
+}
+
+.video-container {
+    display: flex;
+    justify-content: center;
+}
+
+video {
+    width: 336px;
+    height: 336px;
+    padding: 10px;
+}
