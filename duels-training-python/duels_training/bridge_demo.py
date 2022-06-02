@@ -10,8 +10,7 @@ from terminator import TerminatorBridge
 
 from duels_training.bridge_maps import MAPS
 from duels_training.bridge_model import BridgeModel
-from duels_training.bridge_policy import sample_action
-from duels_training.preprocessing import transform_raw_state
+from duels_training.bridge_utils import PolicyState
 
 
 class Recorder:
@@ -26,30 +25,6 @@ class Recorder:
 
     def close(self):
         self.video_writer.release()
-
-
-class PolicyState:
-    def __init__(self, model, device, observation):
-        self.model = model
-        self.device = device
-        self.last_state = None
-        self.policy_output = None
-
-        self.update(observation)
-
-    @torch.no_grad()
-    def update(self, observation):
-        policy_output, _, self.last_state = self.model(
-            transform_raw_state(observation).unsqueeze(0).unsqueeze(0).to(self.device),
-            initial_state=self.last_state,
-            compute_value_estimates=False
-        )
-
-        self.policy_output = policy_output.to(torch.device("cpu")).squeeze(1)
-
-    @torch.no_grad()
-    def sample_action(self):
-        return sample_action(self.policy_output)
 
 
 def play_episode(model, device, client, session, map_name, video_counter):
